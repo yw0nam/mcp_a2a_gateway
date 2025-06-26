@@ -25,10 +25,28 @@ dependencies = [
     "a2a-sdk>=0.2.8",
     "uvicorn>=0.34.0",
     "fastmcp>=2.8.1",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
+    "httpx>=0.28.1",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_a2a_gateway"]
 
 [project.urls]
 "Homepage" = "https://github.com/yw0nam/MCP-A2A-Gateway"
 "Bug Tracker" = "https://github.com/yw0nam/MCP-A2A-Gateway/issues"
 "Repository" = "https://github.com/yw0nam/MCP-A2A-Gateway"
 "Documentation" = "https://github.com/yw0nam/MCP-A2A-Gateway/blob/main/README.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
