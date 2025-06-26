@@ -1,4 +1,3 @@
-# mcp_a2a_gateway/server.py (수정됨)
 import asyncio
 import atexit
 from typing import Any, Dict, List, Optional
@@ -22,7 +21,6 @@ def save_all_data():
     save_to_json(
         agent_manager.get_agents_data_for_saving(), config.REGISTERED_AGENTS_FILE
     )
-    # 수정된 TaskManager의 저장 함수를 사용합니다.
     save_to_json(task_manager.get_tasks_for_saving(), config.TASK_AGENT_MAPPING_FILE)
     config.logger.info("Data saved successfully.")
 
@@ -37,7 +35,6 @@ def load_all_data():
 
     task_data = load_from_json(config.TASK_AGENT_MAPPING_FILE)
     if task_data:
-        # 수정된 TaskManager의 불러오기 함수를 사용합니다.
         task_manager.load_tasks_from_data(task_data)
 
 
@@ -54,7 +51,23 @@ async def periodic_save():
 # --- MCP Tool Definitions ---
 @mcp.tool()
 async def register_agent(url: str, ctx: Context) -> Dict[str, Any]:
-    """Register an A2A agent with the bridge server."""
+    """
+    Registers an Agent-to-Agent (A2A) agent with the bridge server.
+
+    This tool fetches the agent's information (AgentCard) from the given URL
+    and stores it in the server's list of registered agents, making it available
+    for communication.
+
+    Args:
+        url (str): The base URL of the A2A agent to register.
+                   This URL should point to where the agent's card can be resolved.
+        ctx (Context): The MCP context, used for logging information back to the client.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the registration status.
+                        On success, it includes the status and the registered agent's details.
+                        On error, it includes the status and an error message.
+    """
     try:
         registered_url, agent_info = await agent_manager.register_agent(url)
         await ctx.info(
@@ -72,7 +85,17 @@ async def register_agent(url: str, ctx: Context) -> Dict[str, Any]:
 
 @mcp.tool()
 async def list_agents() -> List[Dict[str, Any]]:
-    """List all registered A2A agents."""
+    """
+    Lists all A2A agents currently registered with the bridge server.
+
+    This tool requires no arguments and returns a list of all agents,
+    including their URL and AgentCard information.
+
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries, where each dictionary
+                               represents a registered agent and contains its
+                               URL and full agent card details.
+    """
     agent_list = []
     for url, agent_info in agent_manager.list_agents_with_url():
         agent_list.append({"url": url, "card": agent_info.card.model_dump(mode="json")})
@@ -81,7 +104,21 @@ async def list_agents() -> List[Dict[str, Any]]:
 
 @mcp.tool()
 async def unregister_agent(url: str, ctx: Context) -> Dict[str, Any]:
-    """Unregister an A2A agent from the bridge server."""
+    """
+    Unregisters an A2A agent from the bridge server.
+
+    This also removes any tasks associated with the unregistered agent.
+
+    Args:
+        url (str): The URL of the agent to unregister.
+        ctx (Context): The MCP context for logging.
+
+    Returns:
+        Dict[str, Any]: A dictionary confirming the action, including the
+                        name of the unregistered agent and the number of
+                        tasks that were removed. Returns an error if the
+                        agent was not found.
+    """
     agent_info = agent_manager.unregister_agent(url)
     if not agent_info:
         return {"status": "error", "message": f"Agent not registered: {url}"}
@@ -101,7 +138,23 @@ async def unregister_agent(url: str, ctx: Context) -> Dict[str, Any]:
 async def send_message(
     agent_url: str, message: str, session_id: Optional[str] = None, ctx: Context = None
 ) -> Dict[str, Any]:
-    """Send a message to an A2A agent."""
+    """
+    Sends a message to a registered A2A agent and creates a task.
+
+    This function initiates a conversation or sends a command to an agent.
+    It returns a task ID that can be used later to retrieve the result.
+
+    Args:
+        agent_url (str): The URL of the registered A2A agent to send the message to.
+        message (str): The text content of the message to send.
+        session_id (Optional[str]): An optional identifier to group related messages
+                                     into a single conversation context.
+        ctx (Context): The MCP context for logging.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the result of the message sending
+                        operation, including a `task_id` for future reference.
+    """
     if not agent_manager.get_agent(agent_url):
         return {"status": "error", "message": f"Agent not registered: {agent_url}"}
     try:
@@ -116,7 +169,23 @@ async def send_message(
 async def get_task_result(
     task_id: str, history_length: Optional[int] = None, ctx: Context = None
 ) -> Dict[str, Any]:
-    """Retrieve the result of a task from an A2A agent."""
+    """
+    Retrieves the result or status of a previously created task.
+
+    Using the task_id returned by `send_message`, this tool fetches the
+    current state and any results from the corresponding A2A agent.
+
+    Args:
+        task_id (str): The unique identifier of the task to retrieve.
+        history_length (Optional[int]): If provided, retrieves the last N
+                                         messages in the task's history.
+        ctx (Context): The MCP context for logging.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the task's current status,
+                        result message, and any associated data or an error
+                        if the task ID is not found.
+    """
     try:
         if ctx:
             await ctx.info(f"Retrieving result for task: {task_id}")
@@ -127,7 +196,17 @@ async def get_task_result(
 
 @mcp.tool()
 async def cancel_task(task_id: str, ctx: Context) -> Dict[str, Any]:
-    """Cancel a running task on an A2A agent."""
+    """
+    Cancels a running task on an A2A agent.
+
+    Args:
+        task_id (str): The identifier of the task to be cancelled.
+        ctx (Context): The MCP context for logging.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the final status of the
+                        cancelled task.
+    """
     try:
         if ctx:
             await ctx.info(f"Cancelling task: {task_id}")
@@ -140,7 +219,23 @@ async def cancel_task(task_id: str, ctx: Context) -> Dict[str, Any]:
 async def send_message_stream(
     agent_url: str, message: str, session_id: Optional[str] = None, ctx: Context = None
 ) -> Dict[str, Any]:
-    """Send a message to an A2A agent and stream the response."""
+    """
+    Sends a message to an agent and streams the response back in real-time.
+
+    This is useful for long-running tasks or conversations where intermediate
+    updates are desired.
+
+    Args:
+        agent_url (str): The URL of the agent to send the message to.
+        message (str): The text content of the message.
+        session_id (Optional[str]): An optional session identifier.
+        ctx (Context): The MCP context, which will receive the streaming events.
+
+    Returns:
+        Dict[str, Any]: A dictionary representing the final event of the stream,
+                        or a success message if the stream completes without a
+                        specific final event.
+    """
     if not agent_manager.get_agent(agent_url):
         return {"status": "error", "message": f"Agent not registered: {agent_url}"}
     try:
