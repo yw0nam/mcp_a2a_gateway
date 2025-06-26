@@ -15,14 +15,15 @@ agent_manager = AgentManager()
 task_manager = TaskManager(agent_manager)
 
 
-# --- Data Persistence (이하 로직은 거의 동일) ---
+# --- Data Persistence ---
 def save_all_data():
     """Saves all application data to files."""
     config.logger.info("Saving data before exit...")
     save_to_json(
         agent_manager.get_agents_data_for_saving(), config.REGISTERED_AGENTS_FILE
     )
-    save_to_json(task_manager.task_agent_mapping, config.TASK_AGENT_MAPPING_FILE)
+    # 수정된 TaskManager의 저장 함수를 사용합니다.
+    save_to_json(task_manager.get_tasks_for_saving(), config.TASK_AGENT_MAPPING_FILE)
     config.logger.info("Data saved successfully.")
 
 
@@ -31,9 +32,13 @@ def load_all_data():
     config.ensure_data_dir_exists()
     config.logger.info("Loading saved data...")
     agent_data = load_from_json(config.REGISTERED_AGENTS_FILE)
-    agent_manager.load_agents_from_data(agent_data)
+    if agent_data:
+        agent_manager.load_agents_from_data(agent_data)
+
     task_data = load_from_json(config.TASK_AGENT_MAPPING_FILE)
-    task_manager.load_tasks_from_data(task_data)
+    if task_data:
+        # 수정된 TaskManager의 불러오기 함수를 사용합니다.
+        task_manager.load_tasks_from_data(task_data)
 
 
 atexit.register(save_all_data)
@@ -42,11 +47,11 @@ atexit.register(save_all_data)
 async def periodic_save():
     """Periodically saves data."""
     while True:
-        await asyncio.sleep(300)  # Save every 5 minutes
+        await asyncio.sleep(300)  # 5분마다 저장
         save_all_data()
 
 
-# --- MCP Tool Definitions (수정됨) ---
+# --- MCP Tool Definitions ---
 @mcp.tool()
 async def register_agent(url: str, ctx: Context) -> Dict[str, Any]:
     """Register an A2A agent with the bridge server."""
@@ -55,8 +60,6 @@ async def register_agent(url: str, ctx: Context) -> Dict[str, Any]:
         await ctx.info(
             f"Agent '{agent_info.card.name}' registered from {registered_url}"
         )
-
-        # 응답 형식에 url을 명시적으로 포함시킵니다.
         response_agent = {
             "url": registered_url,
             "card": agent_info.card.model_dump(mode="json"),
@@ -71,13 +74,11 @@ async def register_agent(url: str, ctx: Context) -> Dict[str, Any]:
 async def list_agents() -> List[Dict[str, Any]]:
     """List all registered A2A agents."""
     agent_list = []
-    # 변경된 list_agents_with_url을 사용하여 url과 card를 함께 가져옵니다.
     for url, agent_info in agent_manager.list_agents_with_url():
         agent_list.append({"url": url, "card": agent_info.card.model_dump(mode="json")})
     return agent_list
 
 
-# unregister_agent와 나머지 함수들은 이전과 동일하게 유지됩니다.
 @mcp.tool()
 async def unregister_agent(url: str, ctx: Context) -> Dict[str, Any]:
     """Unregister an A2A agent from the bridge server."""
