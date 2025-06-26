@@ -1,10 +1,10 @@
-# A2A MCP Server
+# MCP-A2A-Gateway
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![](https://badge.mcpx.dev?type=server 'MCP Server')
-[![smithery badge](https://smithery.ai/badge/@GongRzhe/A2A-MCP-Server)](https://smithery.ai/server/@GongRzhe/A2A-MCP-Server)
+[![smithery badge](https://smithery.ai/badge/@yw0nam/MCP-A2A-Gateway)](https://smithery.ai/server/@yw0nam/MCP-A2A-Gateway)
 
-A mcp server that bridges the Model Context Protocol (MCP) with the Agent-to-Agent (A2A) protocol, enabling MCP-compatible AI assistants (like Claude) to seamlessly interact with A2A agents.
+A gateway server that bridges the Model Context Protocol (MCP) with the Agent-to-Agent (A2A) protocol, enabling MCP-compatible AI assistants (like Claude) to seamlessly interact with A2A agents.
 
 ## Overview
 
@@ -59,33 +59,36 @@ By bridging these protocols, this server allows MCP clients (like Claude) to dis
 
 ### Installing via Smithery
 
-To install A2A Bridge Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@GongRzhe/A2A-MCP-Server):
+To install MCP-A2A-Gateway for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@yw0nam/MCP-A2A-Gateway):
 
 ```bash
-npx -y @smithery/cli install @GongRzhe/A2A-MCP-Server --client claude
+npx -y @smithery/cli install @yw0nam/MCP-A2A-Gateway --client claude
 ```
 
 ### Option 1: Install from PyPI
 
 ```bash
-pip install a2a-mcp-server
+pip install MCP-A2A-Gateway
 ```
 
 ### Option 2: Local Installation
 
 1. Clone the repository:
+
    ```bash
-   git clone https://github.com/GongRzhe/A2A-MCP-Server.git
-   cd A2A-MCP-Server
+   git clone https://github.com/yw0nam/MCP-A2A-Gateway.git
+   cd MCP-A2A-Gateway
    ```
 
 2. Set up a virtual environment:
+
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 
 3. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
@@ -151,10 +154,10 @@ MCP_TRANSPORT=streamable-http uvx a2a-mcp-server
 
 ```bash
 # Using default settings (stdio transport)
-uvx a2a-mcp-server
+uvx mcp-a2a-gateway
 
 # Using HTTP transport on specific host and port
-MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8080 uvx a2a-mcp-server
+MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8080 uvx mcp-a2a-gateway
 ```
 
 ## Configuring in Claude Desktop
@@ -173,7 +176,7 @@ Add the following to the `mcpServers` section of your `claude_desktop_config.jso
 "a2a": {
   "command": "uvx",
   "args": [
-    "a2a-mcp-server"
+    "mcp-a2a-gateway"
   ]
 }
 ```
@@ -188,11 +191,11 @@ If you've cloned the repository and want to run the server from your local insta
 "a2a": {
   "command": "C:\\path\\to\\python.exe",
   "args": [
-    "C:\\path\\to\\A2A-MCP-Server\\a2a_mcp_server.py"
+    "C:\\path\\to\\MCP-A2A-Gateway\\a2a_mcp_server.py"
   ],
   "env": {
     "MCP_TRANSPORT": "stdio",
-    "PYTHONPATH": "C:\\path\\to\\A2A-MCP-Server"
+    "PYTHONPATH": "C:\\path\\to\\MCP-A2A-Gateway"
   }
 }
 ```
@@ -224,7 +227,7 @@ Here's an example of a complete `claude_desktop_config.json` file with the A2A-M
     "a2a": {
       "command": "uvx",
       "args": [
-        "a2a-mcp-server"
+        "mcp-a2a-gateway"
       ]
     }
   }
@@ -238,8 +241,9 @@ Here's an example of a complete `claude_desktop_config.json` file with the A2A-M
 Claude can use A2A agents through the MCP tools provided by this server. Here's how to set it up:
 
 1. For Claude Web: Start the MCP server with the streamable-http transport:
+
    ```bash
-   MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8000 uvx a2a-mcp-server
+   MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8000 uvx mcp-a2a-gateway
    ```
 
 2. For Claude Web: In Claude web interface, enable the MCP URL connection in your Tools menu.
@@ -270,8 +274,9 @@ Claude can use A2A agents through the MCP tools provided by this server. Here's 
 Cursor IDE can connect to MCP servers to add tools to its AI assistant:
 
 1. Run your A2A MCP server with the streamable-http transport:
+
    ```bash
-   MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8000 uvx a2a-mcp-server
+   MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8000 uvx mcp-a2a-gateway
    ```
 
 2. In Cursor IDE, go to Settings > AI > MCP Servers
@@ -285,8 +290,9 @@ Cursor IDE can connect to MCP servers to add tools to its AI assistant:
 Windsurf is a browser with built-in MCP support:
 
 1. Run your A2A MCP server with the streamable-http transport:
+
    ```bash
-   MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8000 uvx a2a-mcp-server
+   MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8000 uvx mcp-a2a-gateway
    ```
 
 2. In Windsurf browser, go to Settings > MCP Connections
@@ -493,17 +499,23 @@ The server uses a custom `A2AServerTaskManager` class that extends `InMemoryTask
 
 ## Project Structure
 
-```
-a2a-mcp-server/
-├── a2a_mcp_server.py      # Main server implementation
-├── common/                # A2A protocol code (from google/A2A)
-│   ├── client/            # A2A client implementation
-│   ├── server/            # A2A server implementation
-│   ├── types.py           # Common type definitions
-│   └── utils/             # Utility functions
+```text
+mcp-a2a-gateway/
+├── a2a_mcp_server.py      # Main server entry point
+├── a2a_mcp_server/        # Core server package
+│   ├── __init__.py        # Package initialization
+│   ├── agent_manager.py   # Agent registration and management
+│   ├── config.py          # Configuration management
+│   ├── data_manager.py    # Data persistence utilities
+│   ├── main.py            # Main application logic
+│   ├── server.py          # FastMCP server implementation
+│   └── task_manager.py    # Task tracking and management
+├── data/                  # Application data storage
+│   ├── registered_agents.json     # Registered agent information
+│   └── task_agent_mapping.json   # Task to agent mappings
 ├── config_creator.py      # Script to help create Claude Desktop configuration
 ├── .gitignore             # Git ignore file
-├── pyproject.toml         # Project metadata and dependencies
+├── pyproject.toml         # Project metadata and dependencies (uv compatible)
 ├── README.md              # This file
 └── requirements.txt       # Project dependencies
 ```
