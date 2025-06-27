@@ -1,6 +1,6 @@
 import asyncio
 import atexit
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 from fastmcp import Context, FastMCP
 
 from mcp_a2a_gateway import config
@@ -258,3 +258,47 @@ async def send_message_stream(
         return final_response or {"status": "success", "message": "Stream completed."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+async def get_task_list(
+    status: Literal[
+        "all", "completed", "running", "error", "pending", "streaming", "cancelled"
+    ] = "all",
+    sort: Literal["Descending", "Ascending"] = "Descending",
+    number: int = 10,
+    ctx: Context = None,
+) -> List[Dict[str, Any]]:
+    """
+    Retrieves a list of tasks being managed by the server.
+
+    Args:
+        status (Literal["all", "completed", "running", "error", "pending", "streaming", "cancelled"]):
+            Filters tasks by their status. Defaults to "all".
+        sort (Literal["Descending", "Ascending"]):
+            Sorts tasks by their last update time. Defaults to "Descending".
+        number (int): The maximum number of tasks to return. Defaults to 10.
+        ctx (Context): The MCP context for logging.
+
+    Returns:
+        List[Dict[str, Any]]: A list of tasks, each represented as a dictionary.
+    """
+    try:
+        if ctx:
+            await ctx.info(
+                f"Retrieving task list with status='{status}', sort='{sort}', number={number}"
+            )
+
+        tasks = task_manager.get_task_list(status=status, sort=sort, number=number)
+        task_list = [task.model_dump(mode="json") for task in tasks]
+
+        return task_list
+    except Exception as e:
+        if ctx:
+            await ctx.error(f"Failed to get task list: {e}")
+        # To maintain consistency, return a dictionary with error info
+        # The tool is expected to return a list, but in case of a top-level
+        # exception, a descriptive error object is more informative.
+        # However, to avoid schema mismatches on the client, we wrap it
+        # in a way that can be handled. Returning a list with a single error object.
+        return [{"status": "error", "message": str(e)}]
