@@ -84,21 +84,25 @@ async def register_agent(url: str, ctx: Context) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def list_agents() -> List[Dict[str, Any]]:
+async def list_agents(dummy: str = "") -> List[Dict[str, Any]]:
     """
     Lists all A2A agents currently registered with the bridge server.
 
-    This tool requires no arguments and returns a list of all agents,
-    including their URL and AgentCard information.
+    This resource returns a list of all agents, including their URL and
+    AgentCard information.
 
+    Args:
+        dummy (str): A dummy parameter to satisfy the MCP tool signature. Just for compatibility. Just pass the empty string.
     Returns:
-        List[Dict[str, Any]]: A list of dictionaries, where each dictionary
-                               represents a registered agent and contains its
-                               URL and full agent card details.
+        List[Dict[str, Any]]: A list of dictionaries, each containing the URL and
+                              AgentCard information of a registered agent.
+                              Each dictionary has the keys "url" and "card".
     """
     agent_list = []
     for url, agent_info in agent_manager.list_agents_with_url():
         agent_list.append({"url": url, "card": agent_info.card.model_dump(mode="json")})
+    if not agent_list:
+        agent_list.append({"url": "", "card": {}})
     return agent_list
 
 
