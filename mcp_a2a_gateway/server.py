@@ -153,64 +153,41 @@ async def send_message(
     ctx: Context = None,
 ) -> Dict[str, Any]:
     """
-    Sends a message to an agent and waits for a result for a specified duration.
+    Sends a message to an agent and returns the task status.
 
-    This function initiates a task. If the agent provides an immediate response,
-    it is returned directly. For longer tasks, the system waits for `wait_seconds`
-    for completion. If it's not finished, a 'running' status is returned, and
-    the gateway continues to fetch the result in the background.
+    This function initiates a task with an agent. It will return quickly.
+    - If the agent responds within 5 seconds, the final result is returned.
+    - Otherwise, a 'pending' status is returned, and the gateway continues to
+      fetch the result in the background. Use the 'get_task_result' tool
+      with the returned 'task_id' to check for completion.
 
     Args:
         agent_url (str): The URL of the registered A2A agent.
         message (str): The text message to send.
-        session_id (Optional[str]): An optional identifier for conversation context..
+        session_id (Optional[str]): An optional identifier for conversation context.
         ctx (Context): The MCP context for logging.
 
     Returns:
         Dict[str, Any]: A dictionary representing the task. It will contain the
-                        final result if completed in time, or the current running
-                        status if the wait time is exceeded.
+                        final result if completed quickly, or a pending status
+                        if the agent takes longer to respond.
     """
-    # wait_seconds (Optional[int]): The maximum number of seconds for the client to
-    #                               wait for a quick result. Defaults to 5
-    wait_seconds = 1  # 기본 대기 시간 설정
     if not agent_manager.get_agent(agent_url):
         return {"status": "error", "message": f"Agent not registered: {agent_url}"}
     try:
         if ctx:
             await ctx.info(f"Sending message to: {agent_url}...")
 
-        # TaskManager는 이제 즉시 반환하거나 백그라운드 작업을 시작하고 즉시 반환합니다.
+        # TaskManager handles the logic of immediate response vs. background processing.
+        # It will return the final result or a pending status immediately.
         task_result = await task_manager.send_message(agent_url, message, session_id)
 
-        # 즉시 완료된 경우, 바로 결과 반환
-        if task_result.get("status") in ["completed", "error"]:
-            if ctx:
-                await ctx.info("Task completed immediately.")
-            return task_result
-
-        # 'running' 상태인 경우, wait_seconds 동안 기다려봄
         if ctx:
             await ctx.info(
-                f"Task is running. Waiting up to {wait_seconds} seconds for a quick result..."
+                f"Task status is '{task_result.get('status')}'. Returning to client."
             )
 
-        task_id = task_result.get("task_id")
-        for _ in range(wait_seconds):
-            await asyncio.sleep(1)
-            current_task = task_manager.get_task(task_id)
-            if current_task and current_task.status in ["completed", "error"]:
-                if ctx:
-                    await ctx.info("Task finished within the wait period.")
-                return current_task.model_dump(mode="json")
-
-        if ctx:
-            await ctx.info(
-                "Wait period ended. Returning current task status. The task continues in the background."
-            )
-
-        # 최종적으로 현재 상태 반환
-        return task_manager.get_task(task_id).model_dump(mode="json")
+        return task_result
 
     except Exception as e:
         if ctx:
