@@ -178,15 +178,17 @@ async def send_message(
         if ctx:
             await ctx.info(f"Sending message to: {agent_url}...")
 
-        # TaskManager handles the logic of immediate response vs. background processing.
-        # It will return the final result or a pending status immediately.
-        task_result = await task_manager.send_message(agent_url, message, session_id)
+        # TaskManager가 즉시 반환하는 태스크 정보(task_id 포함)
+        task_result = await task_manager.send_message_async(
+            agent_url, message, session_id
+        )
 
         if ctx:
             await ctx.info(
-                f"Task status is '{task_result.get('status')}'. Returning to client."
+                f"Task '{task_result.get('task_id')}' created with status '{task_result.get('status')}'. Returning to client."
             )
 
+        # task_id가 포함된 결과를 클라이언트에게 즉시 반환
         return task_result
 
     except Exception as e:
@@ -196,9 +198,7 @@ async def send_message(
 
 
 @mcp.tool()
-async def get_task_result(
-    task_id: str, history_length: Optional[int] = None, ctx: Context = None
-) -> Dict[str, Any]:
+async def get_task_result(task_id: str, ctx: Context = None) -> Dict[str, Any]:
     """
     Retrieves the result or status of a previously created task.
 
@@ -207,8 +207,6 @@ async def get_task_result(
 
     Args:
         task_id (str): The unique identifier of the task to retrieve.
-        history_length (Optional[int]): If provided, retrieves the last N
-                                         messages in the task's history.
         ctx (Context): The MCP context for logging.
 
     Returns:
@@ -220,7 +218,7 @@ async def get_task_result(
     try:
         if ctx:
             await ctx.info(f"Retrieving result for task: {task_id}")
-        return await task_manager.get_task_result(task_id, history_length)
+        return await task_manager.get_task_result(task_id)
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
