@@ -1,7 +1,9 @@
 # a2a_mcp_server/config.py
 import os
 import logging
+from dotenv import load_dotenv
 
+load_dotenv()
 # --- General Configuration ---
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 DATA_DIR = os.environ.get("A2A_MCP_DATA_DIR", "data")
