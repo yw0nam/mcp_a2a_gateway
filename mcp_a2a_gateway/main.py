@@ -11,12 +11,16 @@ async def main_async():
     asyncio.create_task(periodic_save())
 
     config.logger.info(f"Starting MCP server with {config.MCP_TRANSPORT} transport...")
-    await mcp.run_async(
-        transport=config.MCP_TRANSPORT,
-        host=config.MCP_HOST,
-        port=config.MCP_PORT,
-        path=config.MCP_PATH,
-    )
+    if config.MCP_TRANSPORT == "stdio":
+        # For stdio transport, we use the run_stdio_async method
+        await mcp.run_stdio_async()
+    else:
+        await mcp.run_async(
+            transport=config.MCP_TRANSPORT,
+            host=config.MCP_HOST,
+            port=config.MCP_PORT,
+            path=config.MCP_PATH,
+        )
 
 
 def main():
