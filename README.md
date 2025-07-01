@@ -88,11 +88,7 @@ uv run mcp-a2a-gateway
 
 ### Environment Variables
 
-Create a `.env` file in the root of the project and add the following environment variables:
-
-```
-MCP_TRANSPORT=streamable-http
-```
+Modify`.env.example` file in the root of the project to `'.env'`
 
 ### Transport Types
 
@@ -111,6 +107,47 @@ The A2A MCP Server supports multiple transport types:
 3. **sse**: Server-Sent Events transport
    - Provides real-time event streaming
    - Useful for real-time updates
+
+
+
+## TO connect github copilot
+
+Add below setting.json for sse or http
+```
+"mcp_a2a_gateway": {
+    "url": "http://0.0.0.0:10000/mcp"
+}
+```
+
+For stdio:
+
+```
+"mcp_a2a_gateway": {
+    "type": "stdio",
+    "command": "uv",
+    "args": [
+        "--directory",
+        "$INSTALLED_DIR",
+        "run",
+        "mcp-a2a-gateway"
+    ]
+}
+```
+
+## To Connect claude desktop
+
+Add this to cluade_config.json
+
+```
+"mcp_a2a_gateway":  {
+  "command": "uv",
+  "args": ["--directory", "%INSTALLED_DIR", "run", "mcp-a2a-gateway"],
+  "env": {
+    "MCP_TRANSPORT": "stdio"
+  }
+}
+```
+
 
 ## Available MCP Tools
 
@@ -186,70 +223,33 @@ The server exposes the following MCP tools for integration with LLMs like Claude
     }
     ```
 
-## Development
 
-To set up a development environment, follow these steps:
+## Roadmap & How to Contribute
 
-1. Clone the repository:
+We are actively developing and improving the gateway! We welcome contributions of all kinds. Here is our current development roadmap, focusing on creating a rock-solid foundation first.
 
-```bash
-git clone https://github.com/yw0nam/MCP-A2A-Gateway.git
-cd MCP-A2A-Gateway
-```
+### Core Stability & Developer Experience (Help Wanted! 👍)
 
-2. Run using:
-```bash
-uv run mcp-a2a-gateway
-```
+This is our current focus. Our goal is to make the gateway as stable and easy to use as possible.
 
-## Contributing
+-   [ ] **Implement Streaming Responses**: Full support for streaming responses from A2A agents.
+-   [ ] **Enhance Error Handling**: Provide clearer error messages and proper HTTP status codes for all scenarios.
+-   [ ] **Input Validation**: Sanitize and validate agent URLs during registration for better security.
+-   [ ] **Add Health Check Endpoint**: A simple `/health` endpoint to monitor the server's status.
+-   [ ] **Configuration Validation**: Check for necessary environment variables at startup.
+-   [ ] **Comprehensive Integration Tests**: Increase test coverage to ensure reliability.
+-   [ ] **Cancel Task**: Implement task cancellation
+-   [ ] **Implement Streaming Update**: Implement streaming task update. So that user check the progress.
 
-Contributions are welcome! Please open an issue or submit a pull request if you have any improvements or suggestions.
 
-## TODO
+### Community & Distribution
 
-### Installation & Distribution
-- [ ] Add smithery install and npx support
-- [ ] Add Docker Compose setup for easy deployment
-- [ ] Create pre-built Docker images for different architectures
+-   [ ] **Easy Installation**: Add support for `npx`
+-   [ ] **Docker Support**: Provide a Docker Compose setup for easy deployment.
+-   [ ] **Better Documentation**: Create a dedicated documentation site or expand the Wiki.
 
-### Data Persistence & Storage
-- [ ] Connect DB or Redis to store the task data
-- [ ] Implement persistent agent registry (survive server restarts)
-- [ ] Add task history and analytics
-- [ ] Implement data backup and recovery mechanisms
-
-### Authentication & Security
-- [ ] Validate and sanitize A2A agent URLs during registration
-
-### Monitoring & Observability
-- [ ] Add comprehensive logging with structured format
-- [ ] Implement health check endpoints
-- [ ] Add metrics collection (Prometheus/OpenTelemetry)
-- [ ] Create dashboard for monitoring agents and tasks
-
-### Error Handling & Resilience
-- [ ] Implement retry logic for failed A2A agent communications
-- [ ] Add circuit breaker pattern for unreliable agents
-- [ ] Better error messages and status codes
-- [ ] Graceful degradation when agents are unavailable
-
-### Features & Functionality
-- [ ] Add support for streaming responses from agents
-- [ ] Implement task scheduling and delayed execution
-
-### Testing & Quality
-- [ ] Add comprehensive integration tests
-- [ ] Implement end-to-end testing with real A2A agents
-- [ ] Add performance benchmarking
-- [ ] Create test coverage reporting
-
-### Documentation & Examples
-- [ ] Add API documentation (OpenAPI/Swagger)
-- [ ] Add troubleshooting guide
-
-### Developer Experience
-- [ ] Implement configuration validation
+---
+**Want to contribute?** Check out the issues tab or feel free to open a new one to discuss your ideas!
 
 ## License
 
