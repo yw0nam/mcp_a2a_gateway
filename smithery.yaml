@@ -5,7 +5,7 @@ startCommand:
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
-    (config) => ({ command: 'python', args: ['a2a_mcp_server.py'], env: { MCP_TRANSPORT: config.mcpTransport, MCP_HOST: config.mcpHost, MCP_PORT: config.mcpPort.toString() } })
+    (config) => ({ command: 'uv', args: ['run', 'mcp-a2a-gateway'], env: { MCP_TRANSPORT: config.mcpTransport, MCP_HOST: config.mcpHost, MCP_PORT: config.mcpPort.toString() } })
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object

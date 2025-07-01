@@ -43,6 +43,9 @@ packages = ["mcp_a2a_gateway"]
 "Repository" = "https://github.com/yw0nam/MCP-A2A-Gateway"
 "Documentation" = "https://github.com/yw0nam/MCP-A2A-Gateway/blob/main/README.md"
 
+[project.scripts]
+"mcp-a2a-gateway" = "mcp_a2a_gateway.main:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]

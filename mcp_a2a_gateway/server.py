@@ -10,7 +10,7 @@ from mcp_a2a_gateway.agent_manager import AgentManager
 from mcp_a2a_gateway.task_manager import TaskManager
 
 # --- Initialization ---
-mcp = FastMCP("A2A Bridge Server (Clarified)")
+mcp = FastMCP("MCP A2A Gateway Server")
 agent_manager = AgentManager()
 task_manager = TaskManager(agent_manager)
 
@@ -223,69 +223,69 @@ async def get_task_result(task_id: str, ctx: Context = None) -> Dict[str, Any]:
         return {"status": "error", "message": str(e)}
 
 
-@mcp.tool()
-async def cancel_task(task_id: str, ctx: Context) -> Dict[str, Any]:
-    """
-    Cancels a running task on an A2A agent.
+# @mcp.tool()
+# async def cancel_task(task_id: str, ctx: Context) -> Dict[str, Any]:
+#     """
+#     Cancels a running task on an A2A agent.
 
-    Args:
-        task_id (str): The identifier of the task to be cancelled.
-        ctx (Context): The MCP context for logging.
+#     Args:
+#         task_id (str): The identifier of the task to be cancelled.
+#         ctx (Context): The MCP context for logging.
 
-    Returns:
-        Dict[str, Any]: A dictionary containing the final status of the
-                        cancelled task.
-    """
-    # (이 도구는 변경되지 않았습니다.)
-    try:
-        if ctx:
-            await ctx.info(f"Cancelling task: {task_id}")
-        return await task_manager.cancel_task(task_id)
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+#     Returns:
+#         Dict[str, Any]: A dictionary containing the final status of the
+#                         cancelled task.
+#     """
+#     # (이 도구는 변경되지 않았습니다.)
+#     try:
+#         if ctx:
+#             await ctx.info(f"Cancelling task: {task_id}")
+#         return await task_manager.cancel_task(task_id)
+#     except Exception as e:
+#         return {"status": "error", "message": str(e)}
 
 
-@mcp.tool()
-async def send_message_stream(
-    agent_url: str, message: str, session_id: Optional[str] = None, ctx: Context = None
-) -> Dict[str, Any]:
-    """
-    Sends a message to an agent and streams the response back in real-time.
-    The final collected result is stored in the task details.
+# @mcp.tool()
+# async def send_message_stream(
+#     agent_url: str, message: str, session_id: Optional[str] = None, ctx: Context = None
+# ) -> Dict[str, Any]:
+#     """
+#     Sends a message to an agent and streams the response back in real-time.
+#     The final collected result is stored in the task details.
 
-    Args:
-        agent_url (str): The URL of the agent to send the message to.
-        message (str): The text content of the message.
-        session_id (Optional[str]): An optional session identifier.
-        ctx (Context): The MCP context, which will receive the streaming events.
+#     Args:
+#         agent_url (str): The URL of the agent to send the message to.
+#         message (str): The text content of the message.
+#         session_id (Optional[str]): An optional session identifier.
+#         ctx (Context): The MCP context, which will receive the streaming events.
 
-    Returns:
-        Dict[str, Any]: A dictionary representing the final event of the stream,
-                        or a success message if the stream completes without a
-                        specific final event.
-    """
-    if not agent_manager.get_agent(agent_url):
-        return {"status": "error", "message": f"Agent not registered: {agent_url}"}
-    try:
-        if ctx:
-            await ctx.info(f"Streaming message to: {agent_url}")
+#     Returns:
+#         Dict[str, Any]: A dictionary representing the final event of the stream,
+#                         or a success message if the stream completes without a
+#                         specific final event.
+#     """
+#     if not agent_manager.get_agent(agent_url):
+#         return {"status": "error", "message": f"Agent not registered: {agent_url}"}
+#     try:
+#         if ctx:
+#             await ctx.info(f"Streaming message to: {agent_url}")
 
-        final_event = {}
-        async for event in task_manager.send_message_stream(
-            agent_url, message, session_id
-        ):
-            if ctx:
-                await ctx.info(
-                    str(event)
-                )  # 스트림 이벤트를 클라이언트에 실시간으로 전달
-            final_event = event
+#         final_event = {}
+#         async for event in task_manager.send_message_stream(
+#             agent_url, message, session_id
+#         ):
+#             if ctx:
+#                 await ctx.info(
+#                     str(event)
+#                 )  # 스트림 이벤트를 클라이언트에 실시간으로 전달
+#             final_event = event
 
-        # 스트림의 마지막 이벤트를 반환하거나, 스트림이 비어있었다면 완료 메시지 반환
-        return final_event or {"status": "success", "message": "Stream completed."}
-    except Exception as e:
-        if ctx:
-            await ctx.error(f"Error in stream: {e}")
-        return {"status": "error", "message": str(e)}
+#         # 스트림의 마지막 이벤트를 반환하거나, 스트림이 비어있었다면 완료 메시지 반환
+#         return final_event or {"status": "success", "message": "Stream completed."}
+#     except Exception as e:
+#         if ctx:
+#             await ctx.error(f"Error in stream: {e}")
+#         return {"status": "error", "message": str(e)}
 
 
 @mcp.tool()
@@ -321,7 +321,11 @@ async def get_task_list(
         tasks = task_manager.get_task_list(status=status, sort=sort, number=number)
         task_list = [task.model_dump(mode="json") for task in tasks]
 
-        return task_list
+        return (
+            task_list
+            if task_list
+            else [{"status": "empty", "message": "No tasks found"}]
+        )
     except Exception as e:
         if ctx:
             await ctx.error(f"Failed to get task list: {e}")
