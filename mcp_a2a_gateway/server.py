@@ -1,3 +1,4 @@
+# mcp_a2a_gateway/server.py (수정됨)
 import asyncio
 import atexit
 from typing import Any, Dict, List, Optional, Literal
@@ -68,6 +69,7 @@ async def register_agent(url: str, ctx: Context) -> Dict[str, Any]:
                         On success, it includes the status and the registered agent's details.
                         On error, it includes the status and an error message.
     """
+    # (이 도구는 변경되지 않았습니다.)
     try:
         registered_url, agent_info = await agent_manager.register_agent(url)
         await ctx.info(
@@ -98,6 +100,7 @@ async def list_agents(dummy: str = "") -> List[Dict[str, Any]]:
                               AgentCard information of a registered agent.
                               Each dictionary has the keys "url" and "card".
     """
+    # (이 도구는 변경되지 않았습니다.)
     agent_list = []
     for url, agent_info in agent_manager.list_agents_with_url():
         agent_list.append({"url": url, "card": agent_info.card.model_dump(mode="json")})
@@ -123,6 +126,7 @@ async def unregister_agent(url: str, ctx: Context) -> Dict[str, Any]:
                         tasks that were removed. Returns an error if the
                         agent was not found.
     """
+    # (이 도구는 변경되지 않았습니다.)
     agent_info = agent_manager.unregister_agent(url)
     if not agent_info:
         return {"status": "error", "message": f"Agent not registered: {url}"}
@@ -138,41 +142,63 @@ async def unregister_agent(url: str, ctx: Context) -> Dict[str, Any]:
     }
 
 
+# mcp_a2a_gateway/server.py (변경되는 부분)
+
+
 @mcp.tool()
 async def send_message(
-    agent_url: str, message: str, session_id: Optional[str] = None, ctx: Context = None
+    agent_url: str,
+    message: str,
+    session_id: Optional[str] = None,
+    ctx: Context = None,
 ) -> Dict[str, Any]:
     """
-    Sends a message to a registered A2A agent and creates a task.
+    Sends a message to an agent and returns the task status.
 
-    This function initiates a conversation or sends a command to an agent.
-    It returns a task ID that can be used later to retrieve the result.
+    This function initiates a task with an agent. It will return quickly.
+    - If the agent responds within 5 seconds, the final result is returned.
+    - Otherwise, a 'pending' status is returned, and the gateway continues to
+      fetch the result in the background. Use the 'get_task_result' tool
+      with the returned 'task_id' to check for completion.
 
     Args:
-        agent_url (str): The URL of the registered A2A agent to send the message to.
-        message (str): The text content of the message to send.
-        session_id (Optional[str]): An optional identifier to group related messages
-                                     into a single conversation context.
+        agent_url (str): The URL of the registered A2A agent.
+        message (str): The text message to send.
+        session_id (Optional[str]): An optional identifier for conversation context.
         ctx (Context): The MCP context for logging.
 
     Returns:
-        Dict[str, Any]: A dictionary containing the result of the message sending
-                        operation, including a `task_id` for future reference.
+        Dict[str, Any]: A dictionary representing the task. It will contain the
+                        final result if completed quickly, or a pending status
+                        if the agent takes longer to respond.
     """
     if not agent_manager.get_agent(agent_url):
         return {"status": "error", "message": f"Agent not registered: {agent_url}"}
     try:
         if ctx:
-            await ctx.info(f"Sending message to: {agent_url}")
-        return await task_manager.send_message(agent_url, message, session_id)
+            await ctx.info(f"Sending message to: {agent_url}...")
+
+        # TaskManager가 즉시 반환하는 태스크 정보(task_id 포함)
+        task_result = await task_manager.send_message_async(
+            agent_url, message, session_id
+        )
+
+        if ctx:
+            await ctx.info(
+                f"Task '{task_result.get('task_id')}' created with status '{task_result.get('status')}'. Returning to client."
+            )
+
+        # task_id가 포함된 결과를 클라이언트에게 즉시 반환
+        return task_result
+
     except Exception as e:
+        if ctx:
+            await ctx.error(f"Failed to send message: {e}")
         return {"status": "error", "message": str(e)}
 
 
 @mcp.tool()
-async def get_task_result(
-    task_id: str, history_length: Optional[int] = None, ctx: Context = None
-) -> Dict[str, Any]:
+async def get_task_result(task_id: str, ctx: Context = None) -> Dict[str, Any]:
     """
     Retrieves the result or status of a previously created task.
 
@@ -181,8 +207,6 @@ async def get_task_result(
 
     Args:
         task_id (str): The unique identifier of the task to retrieve.
-        history_length (Optional[int]): If provided, retrieves the last N
-                                         messages in the task's history.
         ctx (Context): The MCP context for logging.
 
     Returns:
@@ -190,10 +214,11 @@ async def get_task_result(
                         result message, and any associated data or an error
                         if the task ID is not found.
     """
+    # (이 도구는 변경되지 않았습니다.)
     try:
         if ctx:
             await ctx.info(f"Retrieving result for task: {task_id}")
-        return await task_manager.get_task_result(task_id, history_length)
+        return await task_manager.get_task_result(task_id)
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -211,6 +236,7 @@ async def cancel_task(task_id: str, ctx: Context) -> Dict[str, Any]:
         Dict[str, Any]: A dictionary containing the final status of the
                         cancelled task.
     """
+    # (이 도구는 변경되지 않았습니다.)
     try:
         if ctx:
             await ctx.info(f"Cancelling task: {task_id}")
@@ -225,9 +251,7 @@ async def send_message_stream(
 ) -> Dict[str, Any]:
     """
     Sends a message to an agent and streams the response back in real-time.
-
-    This is useful for long-running tasks or conversations where intermediate
-    updates are desired.
+    The final collected result is stored in the task details.
 
     Args:
         agent_url (str): The URL of the agent to send the message to.
@@ -246,17 +270,21 @@ async def send_message_stream(
         if ctx:
             await ctx.info(f"Streaming message to: {agent_url}")
 
-        final_response = {}
+        final_event = {}
         async for event in task_manager.send_message_stream(
             agent_url, message, session_id
         ):
             if ctx:
-                await ctx.info(str(event))
-            if event.get("kind") == "status-update":
-                final_response = event
+                await ctx.info(
+                    str(event)
+                )  # 스트림 이벤트를 클라이언트에 실시간으로 전달
+            final_event = event
 
-        return final_response or {"status": "success", "message": "Stream completed."}
+        # 스트림의 마지막 이벤트를 반환하거나, 스트림이 비어있었다면 완료 메시지 반환
+        return final_event or {"status": "success", "message": "Stream completed."}
     except Exception as e:
+        if ctx:
+            await ctx.error(f"Error in stream: {e}")
         return {"status": "error", "message": str(e)}
 
 
@@ -283,6 +311,7 @@ async def get_task_list(
     Returns:
         List[Dict[str, Any]]: A list of tasks, each represented as a dictionary.
     """
+    # (이 도구는 변경되지 않았습니다.)
     try:
         if ctx:
             await ctx.info(
@@ -296,9 +325,4 @@ async def get_task_list(
     except Exception as e:
         if ctx:
             await ctx.error(f"Failed to get task list: {e}")
-        # To maintain consistency, return a dictionary with error info
-        # The tool is expected to return a list, but in case of a top-level
-        # exception, a descriptive error object is more informative.
-        # However, to avoid schema mismatches on the client, we wrap it
-        # in a way that can be handled. Returning a list with a single error object.
         return [{"status": "error", "message": str(e)}]

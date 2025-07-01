@@ -1,11 +1,12 @@
-# mcp_a2a_gateway/task_manager.py (수정됨)
+import asyncio
 import uuid
-from typing import Dict, Any, Optional, AsyncGenerator, List, Literal
+from typing import Dict, Any, Optional, List, Literal
 import logging
 import httpx
+import os
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
-
+from dotenv import load_dotenv
 from a2a.client import A2AClient
 from a2a.types import (
     Message,
@@ -15,27 +16,26 @@ from a2a.types import (
     SendMessageRequest,
     SendMessageResponse,
     SendMessageSuccessResponse,
-    SendStreamingMessageRequest,
-    GetTaskRequest,
-    GetTaskResponse,
-    GetTaskSuccessResponse,
-    CancelTaskRequest,
-    CancelTaskResponse,
-    CancelTaskSuccessResponse,
     JSONRPCErrorResponse,
     MessageSendParams,
-    TaskQueryParams,
-    TaskIdParams,
 )
-from .agent_manager import AgentManager
+from mcp_a2a_gateway.agent_manager import AgentManager, AgentInfo
 
 logger = logging.getLogger(__name__)
+load_dotenv()
+
+MCP_REQUEST_TIMEOUT = int(os.getenv("MCP_REQUEST_TIMEOUT"))
+MCP_REQUEST_IMMEDIATE_TIMEOUT = int(os.getenv("MCP_REQUEST_IMMEDIATE_TIMEOUT"))
 
 
 class StoredTask(BaseModel):
     """서버에 저장되는 작업의 상세 정보를 담는 모델"""
 
-    task_id: str = Field(description="The unique identifier for the task.")
+    # ⭐️ [변경] agent_task_id 필드 추가
+    agent_task_id: Optional[str] = Field(
+        None, description="The task ID provided by the agent, if different."
+    )
+    task_id: str = Field(description="The unique identifier for the task (gateway ID).")
     agent_url: str = Field(description="The URL of the agent handling the task.")
     agent_name: str = Field(description="The name of the agent handling the task.")
     request_message: str = Field(
@@ -61,27 +61,6 @@ class StoredTask(BaseModel):
         arbitrary_types_allowed = True
 
 
-def format_task_response(task: Task) -> Dict[str, Any]:
-    """A2A Task 객체를 응답용 dict로 변환합니다."""
-    response = {
-        "request_status": "success",  # 'status' -> 'request_status'
-        # 'task_id' is already in the parent object, so we remove it here.
-        "session_id": task.contextId,
-        "state": task.status.state,
-        "message": None,
-        "artifacts": [],
-    }
-    if task.status.message and task.status.message.parts:
-        response["message"] = " ".join(
-            part.root.text
-            for part in task.status.message.parts
-            if isinstance(part.root, TextPart)
-        )
-    if task.artifacts:
-        response["artifacts"] = [a.model_dump(mode="json") for a in task.artifacts]
-    return response
-
-
 class TaskManager:
     def __init__(self, agent_manager: AgentManager):
         self.tasks: Dict[str, StoredTask] = {}
@@ -101,202 +80,198 @@ class TaskManager:
         logger.info(f"Removed {len(tasks_to_remove)} tasks for agent {url}.")
         return len(tasks_to_remove)
 
-    async def send_message(
-        self, agent_url: str, message_text: str, session_id: Optional[str]
+    # ⭐️ [핵심 수정] _process_agent_response 함수 수정
+    async def _process_agent_response(
+        self,
+        response: SendMessageResponse,
+        gateway_task_id: str,  # 이름을 명확하게 변경
+        agent_url: str,
+        agent_info: AgentInfo,
+        message_text: str,
+    ) -> StoredTask:
+        """에이전트 응답을 처리하고 항상 gateway_task_id를 기준으로 태스크를 업데이트합니다."""
+        stored_task = self.get_task(gateway_task_id)
+        if not stored_task:
+            # This can happen if the background task runs after a long delay
+            # and the task has been removed.
+            logger.warning(
+                f"Task {gateway_task_id} not found while processing agent response."
+            )
+            # Create a new one to log the response, though it's disconnected.
+            stored_task = StoredTask(
+                task_id=gateway_task_id,
+                agent_url=agent_url,
+                agent_name=agent_info.card.name,
+                request_message=message_text,
+                status="unknown",  # Initial status
+            )
+
+        try:
+            if isinstance(response.root, SendMessageSuccessResponse):
+                status = "completed"
+                logger.info(f"Agent {agent_url} completed the task successfully.")
+                result_data = response.root.result
+                message_content = " ".join(
+                    p.root.text
+                    for p in result_data.parts
+                    if isinstance(p.root, TextPart)
+                )
+                result = {
+                    "request_status": status,
+                    "message": message_content,
+                }
+            elif isinstance(response.root, Task):
+                # This case might occur if the agent immediately returns a task object
+                # instead of a direct message. We treat it as 'running'.
+                status = "running"
+                logger.info(
+                    f"Agent {agent_url} returned a task object. Now running in background."
+                )
+                message_content = (
+                    " ".join(
+                        p.root.text
+                        for p in result_data.parts
+                        if isinstance(p.root, TextPart)
+                    )
+                    if result_data.parts
+                    else "Running task in background."
+                )
+                result = {
+                    "request_status": status,
+                    "message": message_content,
+                }
+            elif isinstance(response.root, JSONRPCErrorResponse):
+                logger.error(
+                    f"Agent {agent_url} returned an error: {response.root.error.message}"
+                )
+                status = "error"
+                error = response.root.error
+                result = {
+                    "request_status": "error",
+                    "message": f"Agent Error: {error.message} (Code: {error.code})",
+                }
+            else:
+                # Fallback for unexpected response types
+                status = "error"
+                result = {
+                    "request_status": "error",
+                    "message": f"Unexpected response type: {type(response.root)}",
+                }
+                logger.error(result["message"])
+
+            stored_task.update_status(status, result)
+            return stored_task
+        except Exception as e:
+            logger.error(
+                f"Error processing agent response for {gateway_task_id}: {e}",
+                exc_info=True,
+            )
+            stored_task.update_status(
+                "error", {"request_status": "error", "message": str(e)}
+            )
+            return stored_task
+
+    async def send_message_async(
+        self,
+        agent_url: str,
+        message_text: str,
+        session_id: Optional[str],
     ) -> Dict[str, Any]:
-        """에이전트에게 메시지를 보내고, 항상 task_id를 포함한 응답을 반환합니다."""
+        """
+        에이전트에게 메시지를 보내고, 정해진 시간(IMMEDIATE_RESPONSE_TIMEOUT)을 기다립니다.
+        - 시간 내에 응답이 오면, 최종 결과를 즉시 반환합니다.
+        - 시간 내에 응답이 오지 않으면, 'pending' 상태를 반환하고 작업은 백그라운드에서 계속됩니다.
+        """
         agent_info = self.agent_manager.get_agent(agent_url)
         if not agent_info:
             raise ValueError(f"Agent not registered: {agent_url}")
 
-        task_id = str(uuid.uuid4())
-        # Add agent_name and request_message on creation
-        stored_task = StoredTask(
-            task_id=task_id,
+        gateway_task_id = str(uuid.uuid4())
+
+        # 1. 'pending' 상태의 태스크를 미리 생성하고 저장합니다.
+        #    타임아웃이 발생하면 이 객체의 정보가 반환됩니다.
+        pending_task = StoredTask(
+            task_id=gateway_task_id,
             agent_url=agent_url,
             agent_name=agent_info.card.name,
             request_message=message_text,
             status="pending",
+            result={
+                "message": f"The Request isn't end in {MCP_REQUEST_IMMEDIATE_TIMEOUT} second. Task is being processed in background..."
+            },
         )
-        self.tasks[task_id] = stored_task
+        self.tasks[gateway_task_id] = pending_task
+
+        # 2. 실제 통신 및 상태 업데이트를 처리할 코루틴을 정의합니다.
+        async def _send_and_update_task():
+            try:
+                # 이 함수는 항상 self.tasks에 있는 StoredTask를 업데이트합니다.
+                timeout_config = httpx.Timeout(MCP_REQUEST_TIMEOUT, connect=5.0)
+                async with httpx.AsyncClient(timeout=timeout_config) as http_client:
+                    client = A2AClient(
+                        httpx_client=http_client, agent_card=agent_info.card
+                    )
+                    request = SendMessageRequest(
+                        id=gateway_task_id,
+                        params=MessageSendParams(
+                            message=Message(
+                                role="user",
+                                parts=[Part(root=TextPart(text=message_text))],
+                                messageId=str(uuid.uuid4()),
+                            ),
+                            sessionId=session_id,
+                        ),
+                    )
+                    response = await client.send_message(request)
+                    # 상태 업데이트 후 최종 StoredTask 객체를 self.tasks에 저장
+                    updated_task = await self._process_agent_response(
+                        response,
+                        gateway_task_id,
+                        agent_url,
+                        agent_info,
+                        message_text,
+                    )
+                    self.tasks[gateway_task_id] = updated_task
+            except Exception as e:
+                logger.error(
+                    f"Background task {gateway_task_id} failed: {e}", exc_info=True
+                )
+                # self.tasks에 있는 태스크를 직접 찾아 에러 상태로 업데이트합니다.
+                if task := self.tasks.get(gateway_task_id):
+                    task.update_status("error", {"message": str(e)})
+
+        # 3. 백그라운드 작업을 생성합니다.
+        background_task = asyncio.create_task(_send_and_update_task())
 
         try:
-            async with httpx.AsyncClient() as http_client:
-                client = A2AClient(httpx_client=http_client, agent_card=agent_info.card)
-                params = MessageSendParams(
-                    message=Message(
-                        role="user",
-                        parts=[Part(root=TextPart(text=message_text))],
-                        messageId=str(uuid.uuid4()),
-                    ),
-                    contextId=session_id,
-                )
-                request = SendMessageRequest(id=task_id, params=params)
-                response: SendMessageResponse = await client.send_message(request)
+            # 4. 정해진 시간 동안만 백그라운드 작업이 끝나기를 기다립니다.
+            # asyncio.shield()는 타임아웃 시에도 background_task가 취소되지 않도록 보호합니다.
+            await asyncio.wait_for(
+                asyncio.shield(background_task), timeout=MCP_REQUEST_IMMEDIATE_TIMEOUT
+            )
 
-                logger.info(f"Message sent successfully to {agent_url}: {response}")
+            # 5. [성공] 시간 내에 작업이 완료된 경우
+            logger.info(
+                f"Task {gateway_task_id} completed within timeout. Returning final result."
+            )
+            # self.tasks에서 최종 업데이트된 태스크 정보를 가져와 반환합니다.
+            return self.tasks[gateway_task_id].model_dump(mode="json")
 
-                if isinstance(response.root, SendMessageSuccessResponse):
-                    result = response.root.result
-                    if isinstance(result, Task):
-                        task_response = format_task_response(result)
-                        stored_task.update_status(
-                            task_response.get("state", "completed"), task_response
-                        )
-                        # Ensure task_id consistency if agent returns a different one
-                        if result.id and result.id != task_id:
-                            self.tasks[result.id] = self.tasks.pop(task_id)
-                            stored_task.task_id = result.id
-                        # Return the full stored task for a consistent response structure
-                        return stored_task.model_dump(mode="json")
-                    elif isinstance(result, Message):
-                        message_content = " ".join(
-                            p.root.text
-                            for p in result.parts
-                            if isinstance(p.root, TextPart)
-                        )
-                        task_response = {
-                            "request_status": "success",
-                            "message": message_content,
-                        }
-                        stored_task.update_status("completed", task_response)
-                        return stored_task.model_dump(mode="json")
+        except asyncio.TimeoutError:
+            # 6. [타임아웃] 시간이 초과된 경우
+            logger.info(
+                f"Task {gateway_task_id} timed out. Returning pending status while it runs in background."
+            )
+            # 작업은 백그라운드에서 계속 실행되며, 우리는 미리 만들어둔 'pending' 상태를 반환합니다.
+            return pending_task.model_dump(mode="json")
 
-                elif isinstance(response.root, JSONRPCErrorResponse):
-                    error = response.root.error
-                    error_response = {
-                        "request_status": "error",
-                        "message": f"Agent Error: {error.message} (Code: {error.code})",
-                    }
-                    stored_task.update_status("error", error_response)
-                    # Return the full task object even on error
-                    return stored_task.model_dump(mode="json")
-
-                raise TypeError(f"Unexpected response type: {type(response.root)}")
-
-        except Exception as e:
-            logger.error(f"Error sending message to {agent_url}: {e}")
-            error_response = {"request_status": "error", "message": str(e)}
-            stored_task.update_status("error", error_response)
-            raise
-
-    async def get_task_result(
-        self, task_id: str, history_length: Optional[int]
-    ) -> Dict[str, Any]:
-        """저장된 작업 결과를 가져오거나, 에이전트에 직접 요청합니다."""
+    async def get_task_result(self, task_id: str) -> Dict[str, Any]:
+        """게이트웨이 task_id를 사용하여 태스크 결과를 폴링합니다."""
         stored_task = self.get_task(task_id)
         if not stored_task:
-            raise ValueError(f"Task ID not found: {task_id}")
+            return {"status": "error", "message": f"Task ID not found: {task_id}"}
 
-        # Always return the full stored task object for consistency
-        if stored_task.status in ["completed", "error"]:
-            return stored_task.model_dump(mode="json")
-
-        agent_info = self.agent_manager.get_agent(stored_task.agent_url)
-        if not agent_info:
-            raise ValueError(f"Agent for task {task_id} not found.")
-
-        try:
-            async with httpx.AsyncClient() as http_client:
-                client = A2AClient(httpx_client=http_client, agent_card=agent_info.card)
-                params = TaskQueryParams(id=task_id, historyLength=history_length)
-                request = GetTaskRequest(id=task_id, params=params, method="tasks/get")
-                response: GetTaskResponse = await client.get_task(request)
-
-                if isinstance(response.root, GetTaskSuccessResponse):
-                    task_response = format_task_response(response.root.result)
-                    stored_task.update_status(
-                        task_response.get("state", "completed"), task_response
-                    )
-                elif isinstance(response.root, JSONRPCErrorResponse):
-                    error = response.root.error
-                    error_response = {
-                        "request_status": "error",
-                        "message": f"Agent Error: {error.message} (Code: {error.code})",
-                    }
-                    stored_task.update_status("error", error_response)
-                else:
-                    raise TypeError(f"Unexpected response type: {type(response.root)}")
-
-                return stored_task.model_dump(mode="json")
-        except Exception as e:
-            logger.error(f"Error retrieving task {task_id}: {e}")
-            raise
-
-    async def cancel_task(self, task_id: str) -> Dict[str, Any]:
-        """실행 중인 작업을 취소합니다."""
-        stored_task = self.get_task(task_id)
-        if not stored_task:
-            raise ValueError(f"Task ID not found: {task_id}")
-
-        agent_info = self.agent_manager.get_agent(stored_task.agent_url)
-        if not agent_info:
-            raise ValueError(f"Agent for task {task_id} not found.")
-
-        try:
-            async with httpx.AsyncClient() as http_client:
-                client = A2AClient(httpx_client=http_client, agent_card=agent_info.card)
-                params = TaskIdParams(id=task_id)
-                request = CancelTaskRequest(
-                    id=task_id, params=params, method="tasks/cancel"
-                )
-                response: CancelTaskResponse = await client.cancel_task(request)
-
-                if isinstance(response.root, CancelTaskSuccessResponse):
-                    task_response = format_task_response(response.root.result)
-                    stored_task.update_status("cancelled", task_response)
-                    return stored_task.model_dump(mode="json")
-                elif isinstance(response.root, JSONRPCErrorResponse):
-                    error = response.root.error
-                    # Return a consistent error structure
-                    return {
-                        "request_status": "error",
-                        "message": f"Agent Error: {error.message} (Code: {error.code})",
-                    }
-                raise TypeError(f"Unexpected response type: {type(response.root)}")
-        except Exception as e:
-            logger.error(f"Error cancelling task {task_id}: {e}")
-            raise
-
-    async def send_message_stream(
-        self, agent_url: str, message_text: str, session_id: Optional[str]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
-        """메시지를 보내고 응답을 스트리밍합니다."""
-        agent_info = self.agent_manager.get_agent(agent_url)
-        if not agent_info:
-            yield {"status": "error", "message": f"Agent not registered: {agent_url}"}
-            return
-
-        task_id = str(uuid.uuid4())
-        stored_task = StoredTask(
-            task_id=task_id,
-            agent_url=agent_url,
-            agent_name=agent_info.card.name,
-            request_message=message_text,
-            status="streaming",
-        )
-        self.tasks[task_id] = stored_task
-
-        try:
-            async with httpx.AsyncClient() as http_client:
-                client = A2AClient(httpx_client=http_client, agent_card=agent_info.card)
-                params = MessageSendParams(
-                    message=Message(
-                        role="user",
-                        parts=[Part(root=TextPart(text=message_text))],
-                        messageId=str(uuid.uuid4()),
-                    )
-                )
-                request = SendStreamingMessageRequest(id=task_id, params=params)
-
-                async for event in client.send_message_streaming(request):
-                    yield event.model_dump(mode="json")
-                stored_task.update_status("completed")
-
-        except Exception as e:
-            logger.error(f"Error streaming message to {agent_url}: {e}")
-            stored_task.update_status("error", {"message": str(e)})
-            yield {"status": "error", "message": str(e), "task_id": task_id}
+        return stored_task.model_dump(mode="json")
 
     def get_task_list(
         self,
@@ -306,7 +281,7 @@ class TaskManager:
         sort: Literal["Descending", "Ascending"] = "Descending",
         number: int = 10,
     ) -> List[StoredTask]:
-        """Gets a list of tasks, with optional filtering and sorting."""
+        # (이 메소드는 변경되지 않았습니다.)
         tasks = list(self.tasks.values())
 
         if status != "all":
@@ -318,14 +293,14 @@ class TaskManager:
         return tasks[:number]
 
     def get_tasks_for_saving(self) -> Dict[str, dict]:
-        """저장을 위해 직렬화된 작업 데이터를 반환합니다."""
+        # (이 메소드는 변경되지 않았습니다.)
         return {
             task_id: task.model_dump(mode="json")
             for task_id, task in self.tasks.items()
         }
 
     def load_tasks_from_data(self, data: Dict[str, dict]):
-        """파일에서 작업 데이터를 불러옵니다."""
+        # (이 메소드는 변경되지 않았습니다.)
         for task_id, task_data in data.items():
             try:
                 self.tasks[task_id] = StoredTask.model_validate(task_data)
