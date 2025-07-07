@@ -1,7 +1,7 @@
 # Smithery configuration file: https://smithery.ai/docs/build/project-config
 
 startCommand:
-  type: stdio
+  type: streamable-http
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
@@ -13,7 +13,7 @@ startCommand:
     properties:
       mcpTransport:
         type: string
-        default: stdio
+        default: streamable-http
         description: Transport type for MCP communication
       mcpHost:
         type: string
@@ -24,7 +24,7 @@ startCommand:
         default: 10000
         description: Port for the MCP server (ignored for stdio)
   exampleConfig:
-    mcpTransport: stdio
+    mcpTransport: streamable-http
     mcpHost: 0.0.0.0
     mcpPort: 10000
 build:
