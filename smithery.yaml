@@ -21,12 +21,12 @@ startCommand:
         description: Host for the MCP server
       mcpPort:
         type: number
-        default: 8000
+        default: 10000
         description: Port for the MCP server (ignored for stdio)
   exampleConfig:
     mcpTransport: stdio
     mcpHost: 0.0.0.0
-    mcpPort: 8000
+    mcpPort: 10000
 build:
   type: docker
   imageName: mcp-a2a-gateway
