@@ -27,6 +27,3 @@ startCommand:
     mcpTransport: streamable-http
     mcpHost: 0.0.0.0
     mcpPort: 10000
-build:
-  type: docker
-  imageName: mcp-a2a-gateway
