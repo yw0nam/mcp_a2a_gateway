@@ -27,3 +27,6 @@ startCommand:
     mcpTransport: stdio
     mcpHost: 0.0.0.0
     mcpPort: 8000
+build:
+  type: docker
+  imageName: mcp-a2a-gateway
