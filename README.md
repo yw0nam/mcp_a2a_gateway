@@ -244,7 +244,8 @@ This is our current focus. Our goal is to make the gateway as stable and easy to
 
 ### Community & Distribution
 
--   [ ] **Easy Installation**: Add support for [smithery](https://smithery.ai/)
+
+-   [O] **Easy Installation**: Add support for `npx`
 -   [ ] **Docker Support**: Provide a Docker Compose setup for easy deployment.
 -   [ ] **Better Documentation**: Create a dedicated documentation site or expand the Wiki.
 

@@ -1,0 +1,27 @@
+{
+  "name": "mcp-a2a-gateway",
+  "version": "0.1.5",
+  "description": "A bridge server that connects Model Context Protocol (MCP) with Agent-to-Agent (A2A) protocol",
+  "main": "index.js",
+  "bin": {
+    "mcp-a2a-gateway": "./cli.js"
+  },
+  "scripts": {
+    "postinstall": "pip install uv && uv pip install 'a2a-sdk>=0.2.8' 'uvicorn>=0.34.0' 'fastmcp>=2.8.1' 'httpx>=0.28.1'",
+    "start": "node ./cli.js"
+  },
+  "keywords": [
+    "MCP",
+    "A2A",
+    "Agent-to-Agent",
+    "Model Context Protocol",
+    "AI",
+    "LLM"
+  ],
+  "author": "yw0nam <spow2544@gmail.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yw0nam/MCP-A2A-Gateway.git"
+  }
+}
