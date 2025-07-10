@@ -17,3 +17,6 @@ wheels/
 
 references
 data
+
+# Node.js dependencies
+node_modules/
