@@ -1,6 +1,6 @@
 [project]
 name = "mcp-a2a-gateway"
-version = "0.1.6"
+version = "0.1.7"
 description = "A bridge server that connects Model Context Protocol (MCP) with Agent-to-Agent (A2A) protocol"
 readme = "README.md"
 requires-python = ">=3.11"
