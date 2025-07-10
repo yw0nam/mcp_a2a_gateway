@@ -24,8 +24,8 @@ from mcp_a2a_gateway.agent_manager import AgentManager, AgentInfo
 logger = logging.getLogger(__name__)
 load_dotenv()
 
-MCP_REQUEST_TIMEOUT = int(os.getenv("MCP_REQUEST_TIMEOUT"))
-MCP_REQUEST_IMMEDIATE_TIMEOUT = int(os.getenv("MCP_REQUEST_IMMEDIATE_TIMEOUT"))
+MCP_REQUEST_TIMEOUT = int(os.getenv("MCP_REQUEST_TIMEOUT", "30"))
+MCP_REQUEST_IMMEDIATE_TIMEOUT = int(os.getenv("MCP_REQUEST_IMMEDIATE_TIMEOUT", "2"))
 
 
 class StoredTask(BaseModel):

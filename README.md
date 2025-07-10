@@ -15,6 +15,44 @@ This project serves as an integration layer between two cutting-edge AI agent pr
 
 By bridging these protocols, this server allows MCP clients (like Claude) to discover, register, communicate with, and manage tasks on A2A agents through a unified interface.
 
+## Quick Start
+
+🎉 **The package is now available on PyPI!**
+
+### No Installation Required
+```bash
+# Run with default settings (stdio transport)
+uvx mcp-a2a-gateway
+
+# Run with HTTP transport for web clients
+MCP_TRANSPORT=streamable-http MCP_PORT=10000 uvx mcp-a2a-gateway
+
+# Run with custom data directory
+MCP_DATA_DIR="/Users/your-username/Desktop/a2a_data" uvx mcp-a2a-gateway
+
+# Run with specific version
+uvx mcp-a2a-gateway==0.1.6
+
+# Run with multiple environment variables
+MCP_TRANSPORT=stdio MCP_DATA_DIR="/custom/path" LOG_LEVEL=DEBUG uvx mcp-a2a-gateway
+```
+
+### For Development (Local)
+```bash
+# Clone and run locally
+git clone https://github.com/yw0nam/MCP-A2A-Gateway.git
+cd MCP-A2A-Gateway
+
+# Run with uv
+uv run mcp-a2a-gateway
+
+# Run with uvx from local directory
+uvx --from . mcp-a2a-gateway
+
+# Run with custom environment for development
+MCP_TRANSPORT=streamable-http MCP_PORT=8080 uvx --from . mcp-a2a-gateway
+```
+
 ### Demo
 
 #### 1, Run The hello world Agent in A2A Sample
@@ -69,7 +107,17 @@ Before you begin, ensure you have the following installed:
 
 ## Installation
 
-### Option 1: Local Installation
+### Option 1: Direct Run with uvx (Recommended)
+
+Run directly without installation using `uvx`:
+
+```bash
+uvx mcp-a2a-gateway
+```
+
+This will automatically download and run the latest version from PyPI.
+
+### Option 2: Local Development
 
 1. Clone the repository:
 
@@ -78,17 +126,68 @@ git clone https://github.com/yw0nam/MCP-A2A-Gateway.git
 cd MCP-A2A-Gateway
 ```
 
-2. Run using uv. (Note, you need uv for this.)
+2. Run using uv:
 
 ```bash
 uv run mcp-a2a-gateway
+```
+
+3. Or use uvx with local path:
+
+```bash
+uvx --from . mcp-a2a-gateway
+```
+
+### Option 3: HTTP (For Web Clients)
+
+**Start the server with HTTP transport:**
+```bash
+# Using uvx
+MCP_TRANSPORT=streamable-http MCP_HOST=0.0.0.0 MCP_PORT=10000 uvx mcp-a2a-gateway
+```
+### Option 4:  (Server-Sent Events)
+
+**Start the server with SSE transport:**
+```bash
+# Using uvx
+MCP_TRANSPORT=sse MCP_HOST=0.0.0.0 MCP_PORT=10000 uvx mcp-a2a-gateway
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-Modify`.env.example` file in the root of the project to `'.env'`
+The server can be configured using the following environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_TRANSPORT` | `stdio` | Transport type: `stdio`, `streamable-http`, or `sse` |
+| `MCP_HOST` | `0.0.0.0` | Host for HTTP/SSE transports |
+| `MCP_PORT` | `8000` | Port for HTTP/SSE transports |
+| `MCP_PATH` | `/mcp` | HTTP endpoint path |
+| `MCP_DATA_DIR` | `data` | Directory for persistent data storage |
+| `MCP_REQUEST_TIMEOUT` | `30` | Request timeout in seconds |
+| `MCP_REQUEST_IMMEDIATE_TIMEOUT` | `2` | Immediate response timeout in seconds |
+| `LOG_LEVEL` | `INFO` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+
+**Example .env file:**
+```bash
+# Transport configuration
+MCP_TRANSPORT=stdio
+MCP_HOST=0.0.0.0
+MCP_PORT=10000
+MCP_PATH=/mcp
+
+# Data storage
+MCP_DATA_DIR=/Users/your-username/Desktop/data/a2a_gateway
+
+# Timeouts
+MCP_REQUEST_TIMEOUT=30
+MCP_REQUEST_IMMEDIATE_TIMEOUT=2
+
+# Logging
+LOG_LEVEL=INFO
+```
 
 ### Transport Types
 
@@ -112,38 +211,116 @@ The A2A MCP Server supports multiple transport types:
 
 ## TO connect github copilot
 
-Add below setting.json for sse or http
-```
-"mcp_a2a_gateway": {
+### For HTTP/SSE Transport
+Add below to VS Code settings.json for sse or http:
+```json
+"mcpServers": {
+  "mcp_a2a_gateway": {
     "url": "http://0.0.0.0:10000/mcp"
+  }
 }
 ```
 
-For stdio:
+### For STDIO Transport
 
+**Using uvx (Published Package):**
+```json
+"mcpServers": {
+  "mcp_a2a_gateway": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": ["mcp-a2a-gateway"],
+    "env": {
+      "MCP_TRANSPORT": "stdio",
+      "MCP_DATA_DIR": "/Users/your-username/Desktop/data/Copilot/a2a_gateway/"
+    }
+  }
+}
 ```
-"mcp_a2a_gateway": {
+
+**Using uvx (Local Development):**
+```json
+"mcpServers": {
+  "mcp_a2a_gateway": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": ["--from", "/path/to/MCP-A2A-Gateway", "mcp-a2a-gateway"],
+    "env": {
+      "MCP_TRANSPORT": "stdio",
+      "MCP_DATA_DIR": "/Users/your-username/Desktop/data/Copilot/a2a_gateway/"
+    }
+  }
+}
+```
+
+**Using uv (Local Development):**
+```json
+"mcpServers": {
+  "mcp_a2a_gateway": {
     "type": "stdio",
     "command": "uv",
     "args": [
-        "--directory",
-        "$INSTALLED_DIR",
-        "run",
-        "mcp-a2a-gateway"
-    ]
+      "--directory",
+      "/path/to/MCP-A2A-Gateway",
+      "run",
+      "mcp-a2a-gateway"
+    ],
+    "env": {
+      "MCP_TRANSPORT": "stdio",
+      "MCP_DATA_DIR": "/Users/your-username/Desktop/data/Copilot/a2a_gateway/"
+    }
+  }
 }
 ```
 
 ## To Connect claude desktop
 
-Add this to cluade_config.json
+### Transport: STDIO (Recommended)
 
+**Using uvx (Published Package):**
+Add this to claude_config.json
+
+```json
+"mcpServers": {
+  "mcp_a2a_gateway": {
+    "command": "uvx",
+    "args": ["mcp-a2a-gateway"],
+    "env": {
+      "MCP_TRANSPORT": "stdio",
+      "MCP_DATA_DIR": "/Users/your-username/Desktop/data/Claude/a2a_gateway/"
+    }
+  }
+}
 ```
-"mcp_a2a_gateway":  {
-  "command": "uv",
-  "args": ["--directory", "%INSTALLED_DIR", "run", "mcp-a2a-gateway"],
-  "env": {
-    "MCP_TRANSPORT": "stdio"
+
+**Using uvx (Local Development):**
+Add this to claude_config.json
+
+```json
+"mcpServers": {
+  "mcp_a2a_gateway": {
+    "command": "uvx",
+    "args": ["--from", "/path/to/MCP-A2A-Gateway", "mcp-a2a-gateway"],
+    "env": {
+      "MCP_TRANSPORT": "stdio",
+      "MCP_DATA_DIR": "/Users/your-username/Desktop/data/Claude/a2a_gateway/"
+    }
+  }
+}
+```
+
+**Using uv (Local Development):**
+Add this to claude_config.json
+
+```json
+"mcpServers": {
+  "mcp_a2a_gateway": {
+    "command": "uv",
+    "args": ["--directory", "/path/to/MCP-A2A-Gateway", "run", "mcp-a2a-gateway"],
+    "env": {
+      "MCP_TRANSPORT": "stdio",
+      "MCP_DATA_DIR": "/Users/your-username/Desktop/data/Claude/a2a_gateway/"
+    }
   }
 }
 ```
@@ -244,7 +421,7 @@ This is our current focus. Our goal is to make the gateway as stable and easy to
 
 ### Community & Distribution
 
--   [ ] **Easy Installation**: Add support for `npx`
+-   [x] **Easy Installation**: Add support for `uvx`
 -   [ ] **Docker Support**: Provide a Docker Compose setup for easy deployment.
 -   [ ] **Better Documentation**: Create a dedicated documentation site or expand the Wiki.
 

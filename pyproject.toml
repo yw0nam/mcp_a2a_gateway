@@ -1,6 +1,6 @@
 [project]
-name = "MCP-A2A-Gateway"
-version = "0.1.5"
+name = "mcp-a2a-gateway"
+version = "0.1.6"
 description = "A bridge server that connects Model Context Protocol (MCP) with Agent-to-Agent (A2A) protocol"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -11,7 +11,7 @@ authors = [
 maintainers = [
     {name = "yw0nam", email = "spow2544@gmail.com"}
 ]
-keywords = ["MCP", "A2A", "Agent-to-Agent", "Model Context Protocol", "AI", "LLM"]
+keywords = ["MCP", "A2A", "Agent-to-Agent", "Model Context Protocol", "AI", "LLM", "uvx"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Environment :: Console",
 ]
 dependencies = [
     "a2a-sdk>=0.2.8",
@@ -38,18 +39,10 @@ build-backend = "hatchling.build"
 packages = ["mcp_a2a_gateway"]
 
 [project.urls]
-"Homepage" = "https://github.com/yw0nam/MCP-A2A-Gateway"
-"Bug Tracker" = "https://github.com/yw0nam/MCP-A2A-Gateway/issues"
-"Repository" = "https://github.com/yw0nam/MCP-A2A-Gateway"
-"Documentation" = "https://github.com/yw0nam/MCP-A2A-Gateway/blob/main/README.md"
+"Homepage" = "https://github.com/yw0nam/mcp-a2a-gateway"
+"Bug Tracker" = "https://github.com/yw0nam/mcp-a2a-gateway/issues"
+"Repository" = "https://github.com/yw0nam/mcp-a2a-gateway"
+"Documentation" = "https://github.com/yw0nam/mcp-a2a-gateway/blob/main/README.md"
 
 [project.scripts]
 "mcp-a2a-gateway" = "mcp_a2a_gateway.main:main"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "-v --tb=short"
-asyncio_mode = "auto"
