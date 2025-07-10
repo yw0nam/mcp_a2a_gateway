@@ -75,7 +75,12 @@ echo -e "${BLUE}🔨 Building package${NC}"
 uv build
 
 echo -e "${BLUE}🧪 Testing package installation${NC}"
-uvx --from dist/mcp_a2a_gateway-${new_version}-py3-none-any.whl mcp-a2a-gateway --help > /dev/null
+# Test that the package can be imported without starting the server
+uvx --from dist/mcp_a2a_gateway-${new_version}-py3-none-any.whl python -c "
+import mcp_a2a_gateway
+from mcp_a2a_gateway.main import main
+print('✅ Package imports successfully')
+"
 
 # Commit the version change
 echo -e "${BLUE}📤 Committing version bump${NC}"

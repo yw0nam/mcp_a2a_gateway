@@ -16,7 +16,11 @@ echo "🧪 Testing package installation locally..."
 latest_wheel=$(ls dist/*.whl | head -1)
 if [ -f "$latest_wheel" ]; then
     echo "Testing: $latest_wheel"
-    uvx --from "$latest_wheel" mcp-a2a-gateway --help > /dev/null && echo "✅ Package test successful"
+    uvx --from "$latest_wheel" python -c "
+import mcp_a2a_gateway
+from mcp_a2a_gateway.main import main
+print('✅ Package imports successfully')
+" && echo "✅ Package test successful"
 else
     echo "❌ No wheel file found"
     exit 1

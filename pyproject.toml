@@ -26,9 +26,20 @@ dependencies = [
     "a2a-sdk>=0.2.8",
     "uvicorn>=0.34.0",
     "fastmcp>=2.8.1",
+    "httpx>=0.28.1",
+]
+
+[project.optional-dependencies]
+dev = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
-    "httpx>=0.28.1",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+]
+test = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
 ]
 
 [build-system]
@@ -46,3 +57,27 @@ packages = ["mcp_a2a_gateway"]
 
 [project.scripts]
 "mcp-a2a-gateway" = "mcp_a2a_gateway.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-config",
+    "--strict-markers",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 88
