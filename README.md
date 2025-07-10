@@ -438,3 +438,81 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 - Google for the [Agent-to-Agent Protocol](https://github.com/google/A2A)
 - Contributors to the FastMCP library
 - Contributors of [A2A-MCP-Server](https://github.com/GongRzhe/A2A-MCP-Server) (This project highly inspired from this repo.)
+
+## Automated Publishing & Releases
+
+This project uses automated publishing through GitHub Actions for seamless releases.
+
+### Automated Release Process
+
+#### Option 1: Using the Release Script (Recommended)
+
+```bash
+# Patch release (0.1.6 → 0.1.7)
+./release.sh patch
+
+# Minor release (0.1.6 → 0.2.0)  
+./release.sh minor
+
+# Major release (0.1.6 → 1.0.0)
+./release.sh major
+```
+
+The script will:
+1. ✅ Check you're on the main branch with clean working directory
+2. 📈 Automatically bump the version in `pyproject.toml`
+3. 🔨 Build and test the package locally
+4. 📤 Commit the version change and create a git tag
+5. 🚀 Push to GitHub, triggering automated PyPI publishing
+
+#### Option 2: Manual Tag Creation
+
+```bash
+# Update version in pyproject.toml manually
+# Then create and push a tag
+git add pyproject.toml
+git commit -m "chore: bump version to 0.1.7"
+git tag v0.1.7
+git push origin main
+git push origin v0.1.7
+```
+
+#### Option 3: GitHub Releases
+
+1. Go to https://github.com/yw0nam/MCP-A2A-Gateway/releases
+2. Click "Create a new release"
+3. Choose or create a tag (e.g., `v0.1.7`)
+4. Fill in release notes
+5. Publish the release
+
+### Setting Up Automated Publishing
+
+To enable automated publishing, add your PyPI API token to GitHub Secrets:
+
+1. **Get PyPI API Token**:
+   - Go to https://pypi.org/manage/account/token/
+   - Create a new token with "Entire account" scope
+   - Copy the token (starts with `pypi-`)
+
+2. **Add to GitHub Secrets**:
+   - Go to your repository → Settings → Secrets and variables → Actions
+   - Add a new repository secret:
+     - **Name**: `PYPI_API_TOKEN`
+     - **Value**: Your PyPI token
+
+3. **Test the Workflow**:
+   - Push a tag or create a release
+   - Check the Actions tab for publishing status
+
+### Manual Publishing
+
+For emergency releases or local testing:
+
+```bash
+# Build and get manual publish instructions
+./publish.sh
+
+# Or publish directly (with credentials configured)
+uv build
+uv publish
+```
