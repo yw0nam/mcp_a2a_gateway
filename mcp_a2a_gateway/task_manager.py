@@ -22,6 +22,9 @@ from a2a.types import (
 from mcp_a2a_gateway.agent_manager import AgentManager, AgentInfo
 
 logger = logging.getLogger(__name__)
+# Enable debug logging if LOG_LEVEL is DEBUG
+if os.getenv("LOG_LEVEL", "INFO").upper() == "DEBUG":
+    logger.setLevel(logging.DEBUG)
 load_dotenv()
 
 MCP_REQUEST_TIMEOUT = int(os.getenv("MCP_REQUEST_TIMEOUT", "30"))
@@ -106,40 +109,208 @@ class TaskManager:
                 status="unknown",  # Initial status
             )
 
+        def extract_text_content(obj) -> str:
+            """
+            Safely extracts text content from various A2A response objects.
+            Handles Message objects with parts, Task objects, or any other structure.
+            """
+            # Case 1: Object has 'parts' attribute (Message-like)
+            if hasattr(obj, "parts") and obj.parts:
+                try:
+                    text_parts = []
+                    for part in obj.parts:
+                        if hasattr(part, "root") and hasattr(part.root, "text"):
+                            text_parts.append(part.root.text)
+                        elif hasattr(part, "text"):
+                            text_parts.append(part.text)
+                        elif isinstance(part, str):
+                            text_parts.append(part)
+
+                    if text_parts:
+                        return " ".join(text_parts)
+                except Exception as e:
+                    logger.debug(f"Error extracting from parts: {e}")
+
+            # Case 2: Object has direct 'text' attribute
+            if hasattr(obj, "text"):
+                return str(obj.text)
+
+            # Case 3: Object has 'content' attribute
+            if hasattr(obj, "content"):
+                if isinstance(obj.content, str):
+                    return obj.content
+                elif hasattr(obj.content, "text"):
+                    return str(obj.content.text)
+
+            # Case 4: Object has 'message' attribute
+            if hasattr(obj, "message"):
+                if isinstance(obj.message, str):
+                    return obj.message
+                else:
+                    return extract_text_content(obj.message)
+
+            # Case 5: Object is a Task - extract relevant info and check for artifacts
+            if isinstance(obj, Task):
+                task_info = []
+
+                # First, try to extract from artifacts (this is where the real content is)
+                if hasattr(obj, "artifacts") and obj.artifacts:
+                    try:
+                        artifact_content = []
+                        for artifact in obj.artifacts:
+                            # Check if artifact has parts
+                            if hasattr(artifact, "parts") and artifact.parts:
+                                for part in artifact.parts:
+                                    if hasattr(part, "root") and hasattr(
+                                        part.root, "text"
+                                    ):
+                                        artifact_content.append(part.root.text)
+                                    elif hasattr(part, "text"):
+                                        artifact_content.append(part.text)
+                            # Check if artifact has direct content
+                            elif hasattr(artifact, "content"):
+                                if isinstance(artifact.content, str):
+                                    artifact_content.append(artifact.content)
+                                else:
+                                    artifact_content.append(
+                                        extract_text_content(artifact.content)
+                                    )
+                            # Check if artifact has text
+                            elif hasattr(artifact, "text"):
+                                artifact_content.append(str(artifact.text))
+
+                        if artifact_content:
+                            return " ".join(artifact_content)
+                    except Exception as e:
+                        logger.debug(f"Error extracting from task artifacts: {e}")
+
+                # If no artifacts or artifact extraction failed, get basic task info
+                if hasattr(obj, "id") and obj.id:
+                    task_info.append(f"Task ID: {obj.id}")
+                if hasattr(obj, "status") and obj.status:
+                    task_info.append(f"Status: {obj.status}")
+                if hasattr(obj, "description") and obj.description:
+                    task_info.append(f"Description: {obj.description}")
+
+                # Also check for state or result fields that might contain content
+                if hasattr(obj, "state") and obj.state:
+                    state_content = extract_text_content(obj.state)
+                    if state_content and "no readable content" not in state_content:
+                        task_info.append(f"State: {state_content}")
+
+                if hasattr(obj, "result") and obj.result:
+                    result_content = extract_text_content(obj.result)
+                    if result_content and "no readable content" not in result_content:
+                        task_info.append(f"Result: {result_content}")
+
+                return (
+                    " | ".join(task_info)
+                    if task_info
+                    else "Task object (no readable content)"
+                )
+
+            # Case 6: Try to convert to string if it's a simple type
+            if isinstance(obj, (str, int, float, bool)):
+                return str(obj)
+
+            # Case 7: Try to extract from dict-like objects
+            if hasattr(obj, "__dict__"):
+                obj_dict = obj.__dict__
+                for key in ["text", "content", "message", "description", "result"]:
+                    if key in obj_dict and obj_dict[key]:
+                        if isinstance(obj_dict[key], str):
+                            return obj_dict[key]
+                        else:
+                            return extract_text_content(obj_dict[key])
+
+            # Fallback: return object type info
+            return f"Response received (type: {type(obj).__name__})"
+
+        def extract_task_id(obj) -> Optional[str]:
+            """Safely extracts task ID from A2A response objects."""
+            if hasattr(obj, "id") and obj.id:
+                return str(obj.id)
+            if hasattr(obj, "task_id") and obj.task_id:
+                return str(obj.task_id)
+            if hasattr(obj, "taskId") and obj.taskId:
+                return str(obj.taskId)
+            return None
+
         try:
+            # Log the response structure for debugging
+            logger.debug(f"Received response type: {type(response.root).__name__}")
+            if hasattr(response.root, "__dict__"):
+                logger.debug(
+                    f"Response attributes: {list(response.root.__dict__.keys())}"
+                )
+
+            # Handle different response types
             if isinstance(response.root, SendMessageSuccessResponse):
                 status = "completed"
                 logger.info(f"Agent {agent_url} completed the task successfully.")
                 result_data = response.root.result
-                message_content = " ".join(
-                    p.root.text
-                    for p in result_data.parts
-                    if isinstance(p.root, TextPart)
-                )
+
+                # Log result data structure for debugging
+                logger.debug(f"Result data type: {type(result_data).__name__}")
+                if hasattr(result_data, "__dict__"):
+                    logger.debug(
+                        f"Result data attributes: {list(result_data.__dict__.keys())}"
+                    )
+
+                # Extract message content using our robust extractor
+                message_content = extract_text_content(result_data)
+                logger.debug(f"Extracted message content: {message_content[:200]}...")
+
+                # If we couldn't extract meaningful content, provide a fallback
+                if not message_content or message_content.strip() == "":
+                    message_content = "Task completed successfully (no text response)."
+
+                # Store task ID if the result is a Task object
+                task_id = extract_task_id(result_data)
+                if task_id:
+                    stored_task.agent_task_id = task_id
+
                 result = {
                     "request_status": status,
                     "message": message_content,
+                    "result_type": type(result_data).__name__,
                 }
+
             elif isinstance(response.root, Task):
-                # This case might occur if the agent immediately returns a task object
-                # instead of a direct message. We treat it as 'running'.
+                # Agent returned a Task object directly
                 status = "running"
                 logger.info(
                     f"Agent {agent_url} returned a task object. Now running in background."
                 )
-                message_content = (
-                    " ".join(
-                        p.root.text
-                        for p in result_data.parts
-                        if isinstance(p.root, TextPart)
-                    )
-                    if result_data.parts
-                    else "Running task in background."
+
+                # Log task object structure for debugging
+                task_obj = response.root
+                logger.debug(
+                    f"Task object attributes: {list(task_obj.__dict__.keys()) if hasattr(task_obj, '__dict__') else 'No __dict__'}"
                 )
+                if hasattr(task_obj, "artifacts"):
+                    logger.debug(
+                        f"Task has {len(task_obj.artifacts) if task_obj.artifacts else 0} artifacts"
+                    )
+
+                # Store the task ID if available
+                task_id = extract_task_id(task_obj)
+                if task_id:
+                    stored_task.agent_task_id = task_id
+
+                # Extract any available content from the task
+                message_content = extract_text_content(task_obj)
+                logger.debug(f"Extracted task content: {message_content}")
+
+                if not message_content or "no readable content" in message_content:
+                    message_content = "Task is running in background."
+
                 result = {
                     "request_status": status,
                     "message": message_content,
+                    "result_type": "Task",
                 }
+
             elif isinstance(response.root, JSONRPCErrorResponse):
                 logger.error(
                     f"Agent {agent_url} returned an error: {response.root.error.message}"
@@ -149,25 +320,46 @@ class TaskManager:
                 result = {
                     "request_status": "error",
                     "message": f"Agent Error: {error.message} (Code: {error.code})",
+                    "error_code": error.code,
                 }
+
             else:
-                # Fallback for unexpected response types
-                status = "error"
+                # Handle any other response types
+                status = (
+                    "completed"  # Assume completion for unknown successful responses
+                )
+                logger.info(
+                    f"Agent {agent_url} returned unexpected response type: {type(response.root)}"
+                )
+
+                # Try to extract content from the unknown response type
+                message_content = extract_text_content(response.root)
+
                 result = {
-                    "request_status": "error",
-                    "message": f"Unexpected response type: {type(response.root)}",
+                    "request_status": status,
+                    "message": message_content,
+                    "result_type": type(response.root).__name__,
                 }
-                logger.error(result["message"])
 
             stored_task.update_status(status, result)
             return stored_task
+
         except Exception as e:
             logger.error(
                 f"Error processing agent response for {gateway_task_id}: {e}",
                 exc_info=True,
             )
             stored_task.update_status(
-                "error", {"request_status": "error", "message": str(e)}
+                "error",
+                {
+                    "request_status": "error",
+                    "message": f"Error processing response: {str(e)}",
+                    "original_response_type": (
+                        type(response.root).__name__
+                        if response and response.root
+                        else "unknown"
+                    ),
+                },
             )
             return stored_task
 
