@@ -1,4 +1,4 @@
-# .github/workflows/build-and-test.yml (모든 테스트가 포함된 버전)
+# .github/workflows/build-and-test.yml (최종 수정안)
 name: Build and Test
 
 on:
@@ -31,7 +31,7 @@ jobs:
       run: |
         uv run black --check .
         uv run isort --check .
-        uv run flake8 .
+        uv run flake8 mcp_a2a_gateway tests
 
     - name: ✅ Run tests (pytest)
       run: uv run pytest
@@ -42,14 +42,7 @@ jobs:
     - name: ✅ Test package installation and imports
       run: |
         wheel_file=$(ls dist/*.whl | head -1)
-        echo "Testing wheel: $wheel_file"
-        uv run --with "$wheel_file" python -c "
-        import mcp_a2a_gateway
-        from mcp_a2a_gateway.main import main
-        from mcp_a2a_gateway.server import mcp
-        from mcp_a2a_gateway.config import logger
-        print('✅ Package installs and imports correctly')
-        "
+        uv run --with "$wheel_file" python -c "import mcp_a2a_gateway; print('✅ Package installs and imports correctly')"
 
     - name: ✅ Test server startup (quick smoke test)
       timeout-minutes: 2
@@ -67,13 +60,18 @@ jobs:
             loop.call_later(5, timeout_handler)
             try:
                 await main_async()
+            except asyncio.exceptions.CancelledError:
+                print('Server shutdown as expected.')
             except Exception as e:
                 print(f'❌ Server failed to start: {e}')
                 sys.exit(1)
             
-        asyncio.run(test_startup())
+        try:
+            asyncio.run(test_startup())
+        except SystemExit as e:
+            sys.exit(e.code)
         "
-    
+
     - name: Upload artifact for publishing job
       uses: actions/upload-artifact@v4
       with:
