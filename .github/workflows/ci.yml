@@ -1,112 +1,21 @@
+# .github/workflows/ci.yml (수정)
 name: CI
 
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'mcp_a2a_gateway/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/**'
   pull_request:
     branches: [ main ]
-
+    paths:
+      - 'mcp_a2a_gateway/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/**'
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12']
-
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-    
-    - name: Install dependencies
-      run: uv sync --all-extras --dev
-    
-    - name: Run tests (if any)
-      run: |
-        if [ -d "tests" ] && [ "$(ls -A tests)" ]; then
-          uv run pytest
-        else
-          echo "No tests directory found, skipping pytest"
-        fi
-    
-    - name: Check package can be built
-      run: uv build
-    
-    - name: Test package imports correctly
-      run: |
-        uv run python -c "
-        try:
-            import mcp_a2a_gateway
-            from mcp_a2a_gateway.main import main
-            from mcp_a2a_gateway.server import mcp
-            from mcp_a2a_gateway.config import logger
-            print('✅ All imports successful')
-        except ImportError as e:
-            print(f'❌ Import error: {e}')
-            exit(1)
-        "
-    
-    - name: Test package installation from wheel
-      run: |
-        wheel_file=$(ls dist/*.whl | head -1)
-        echo "Testing wheel: $wheel_file"
-        
-        # Test that the package can be installed
-        uv run --with "$wheel_file" python -c "
-        import mcp_a2a_gateway
-        print('✅ Package installs and imports correctly')
-        "
-        
-        # Test that the entry point exists (without running it)
-        uv run --with "$wheel_file" python -c "
-        import pkg_resources
-        entry_points = pkg_resources.get_entry_map('mcp-a2a-gateway')
-        if 'console_scripts' in entry_points and 'mcp-a2a-gateway' in entry_points['console_scripts']:
-            print('✅ Entry point mcp-a2a-gateway exists')
-        else:
-            print('❌ Entry point mcp-a2a-gateway not found')
-            exit(1)
-        "
-    
-    - name: Test server startup (quick smoke test)
-      timeout-minutes: 2
-      run: |
-        # Start the server in background and test it starts without immediate crashes
-        uv run python -c "
-        import asyncio
-        import signal
-        import sys
-        from mcp_a2a_gateway.main import main_async
-        
-        async def test_startup():
-            try:
-                # Set up a timeout to kill the server after 5 seconds
-                def timeout_handler(signum, frame):
-                    print('✅ Server started successfully and ran for 5 seconds')
-                    sys.exit(0)
-                
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(5)  # 5 second timeout
-                
-                # Try to start the server
-                await main_async()
-            except Exception as e:
-                print(f'❌ Server failed to start: {e}')
-                sys.exit(1)
-        
-        asyncio.run(test_startup())
-        " &
-        
-        # Wait a bit to see if the server starts without immediate failure
-        sleep 3
-        
-        # If we get here, the server didn't crash immediately
-        echo "✅ Server startup test passed"
+  call_build_and_test_workflow:
+    uses: ./.github/workflows/build-and-test.yml

@@ -1,34 +1,30 @@
+# .github/workflows/publish.yml (수정)
 name: Publish to PyPI
 
 on:
-  push:
-    tags:
-      - 'v*'  # Triggers on version tags like v0.1.7, v1.0.0, etc.
   release:
     types: [published]
 
 jobs:
-  publish:
+  build:
+    uses: ./.github/workflows/build-and-test.yml
+
+  publish-to-pypi:
+    needs: build # build 작업이 끝나야 실행돼요
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Download artifact
+      uses: actions/download-artifact@v4
       with:
-        python-version: '3.11'
-    
+        name: python-package
+        path: dist/
+        
     - name: Install uv
       uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-    
-    - name: Build package
-      run: uv build
-    
+
     - name: Publish to PyPI
       env:
         UV_PUBLISH_USERNAME: __token__
         UV_PUBLISH_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: uv publish
+      run: uv publish dist/*

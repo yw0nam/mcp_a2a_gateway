@@ -1,0 +1,81 @@
+# .github/workflows/build-and-test.yml (모든 테스트가 포함된 버전)
+name: Build and Test
+
+on:
+  workflow_call:
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv and cache dependencies
+      uses: astral-sh/setup-uv@v3
+      with:
+        cache: true
+
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+
+    - name: Lint and Format Check
+      run: |
+        uv run black --check .
+        uv run isort --check .
+        uv run flake8 .
+
+    - name: ✅ Run tests (pytest)
+      run: uv run pytest
+
+    - name: ✅ Check package can be built
+      run: uv build
+
+    - name: ✅ Test package installation and imports
+      run: |
+        wheel_file=$(ls dist/*.whl | head -1)
+        echo "Testing wheel: $wheel_file"
+        uv run --with "$wheel_file" python -c "
+        import mcp_a2a_gateway
+        from mcp_a2a_gateway.main import main
+        from mcp_a2a_gateway.server import mcp
+        from mcp_a2a_gateway.config import logger
+        print('✅ Package installs and imports correctly')
+        "
+
+    - name: ✅ Test server startup (quick smoke test)
+      timeout-minutes: 2
+      run: |
+        uv run python -c "
+        import asyncio, sys, signal
+        from mcp_a2a_gateway.main import main_async
+
+        async def test_startup():
+            loop = asyncio.get_running_loop()
+            def timeout_handler():
+                print('✅ Server started successfully and ran for 5 seconds')
+                loop.stop()
+
+            loop.call_later(5, timeout_handler)
+            try:
+                await main_async()
+            except Exception as e:
+                print(f'❌ Server failed to start: {e}')
+                sys.exit(1)
+            
+        asyncio.run(test_startup())
+        "
+    
+    - name: Upload artifact for publishing job
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-${{ matrix.python-version }}
+        path: dist/
