@@ -1,6 +1,7 @@
 # a2a_mcp_server/config.py
-import os
 import logging
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()

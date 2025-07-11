@@ -1,11 +1,11 @@
 # a2a_mcp_server/agent_manager.py (수정됨)
-from typing import Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field
-import httpx
 import logging
+from typing import Dict, List, Optional, Tuple
 
+import httpx
 from a2a.client import A2ACardResolver
 from a2a.types import AgentCard
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

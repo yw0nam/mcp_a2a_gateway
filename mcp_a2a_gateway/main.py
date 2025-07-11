@@ -2,7 +2,7 @@
 import asyncio
 
 from mcp_a2a_gateway import config
-from mcp_a2a_gateway.server import mcp, load_all_data, periodic_save
+from mcp_a2a_gateway.server import load_all_data, mcp, periodic_save
 
 
 async def main_async():

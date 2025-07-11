@@ -7,12 +7,12 @@ def test_imports():
     """Test that all main modules can be imported."""
     try:
         import mcp_a2a_gateway
+        from mcp_a2a_gateway.agent_manager import AgentManager
+        from mcp_a2a_gateway.config import logger
+        from mcp_a2a_gateway.data_manager import load_from_json, save_to_json
         from mcp_a2a_gateway.main import main, main_async
         from mcp_a2a_gateway.server import mcp
-        from mcp_a2a_gateway.config import logger
-        from mcp_a2a_gateway.agent_manager import AgentManager
         from mcp_a2a_gateway.task_manager import TaskManager
-        from mcp_a2a_gateway.data_manager import save_to_json, load_from_json
     except ImportError as e:
         pytest.fail(f"Failed to import modules: {e}")
 
@@ -52,9 +52,10 @@ def test_config_values():
 
 def test_data_manager_functions():
     """Test that data manager functions work with basic data."""
-    import tempfile
     import os
-    from mcp_a2a_gateway.data_manager import save_to_json, load_from_json
+    import tempfile
+
+    from mcp_a2a_gateway.data_manager import load_from_json, save_to_json
 
     # Test data
     test_data = {"test_key": "test_value", "number": 42}
