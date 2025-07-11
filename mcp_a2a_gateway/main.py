@@ -27,7 +27,8 @@ def main():
     """Main entry point."""
     config.logger.info("MCP-A2A Gateway Server is starting...")
     config.logger.info(
-        f"Configuration: Transport={config.MCP_TRANSPORT}, Host={config.MCP_HOST}, Port={config.MCP_PORT}"
+        f"Configuration: Transport={config.MCP_TRANSPORT}, "
+        f"Host={config.MCP_HOST}, Port={config.MCP_PORT}"
     )
     try:
         asyncio.run(main_async())

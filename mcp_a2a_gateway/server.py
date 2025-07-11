@@ -62,13 +62,16 @@ async def register_agent(url: str, ctx: Context) -> Dict[str, Any]:
 
     Args:
         url (str): The base URL of the A2A agent to register.
-                   This URL should point to where the agent's card can be resolved.
-        ctx (Context): The MCP context, used for logging information back to the client.
+                   This URL should point to where the agent's card can be
+                   resolved.
+        ctx (Context): The MCP context, used for logging information back to
+                       the client.
 
     Returns:
         Dict[str, Any]: A dictionary containing the registration status.
-                        On success, it includes the status and the registered agent's details.
-                        On error, it includes the status and an error message.
+                        On success, it includes the status and the registered
+                        agent's details. On error, it includes the status and
+                        an error message.
     """
     # (이 도구는 변경되지 않았습니다.)
     try:
@@ -95,7 +98,8 @@ async def list_agents(dummy: str = "") -> List[Dict[str, Any]]:
     AgentCard information.
 
     Args:
-        dummy (str): A dummy parameter to satisfy the MCP tool signature. Just for compatibility. Just pass the empty string.
+        dummy (str): A dummy parameter to satisfy the MCP tool signature.
+                     Just for compatibility. Just pass the empty string.
     Returns:
         List[Dict[str, Any]]: A list of dictionaries, each containing the URL and
                               AgentCard information of a registered agent.
@@ -165,7 +169,8 @@ async def send_message(
     Args:
         agent_url (str): The URL of the registered A2A agent.
         message (str): The text message to send.
-        session_id (Optional[str]): An optional identifier for conversation context.
+        session_id (Optional[str]): An optional identifier for conversation
+                                     context.
         ctx (Context): The MCP context for logging.
 
     Returns:
@@ -186,7 +191,8 @@ async def send_message(
 
         if ctx:
             await ctx.info(
-                f"Task '{task_result.get('task_id')}' created with status '{task_result.get('status')}'. Returning to client."
+                f"Task '{task_result.get('task_id')}' created with status "
+                f"'{task_result.get('status')}'. Returning to client."
             )
 
         # task_id가 포함된 결과를 클라이언트에게 즉시 반환
@@ -302,21 +308,26 @@ async def get_task_list(
     Retrieves a list of tasks being managed by the server.
 
     Args:
-        status (Literal["all", "completed", "running", "error", "pending", "streaming", "cancelled"]):
+        status (Literal["all", "completed", "running", "error", "pending",
+                         "streaming", "cancelled"]):
             Filters tasks by their status. Defaults to "all".
         sort (Literal["Descending", "Ascending"]):
-            Sorts tasks by their last update time. Defaults to "Descending".
-        number (int): The maximum number of tasks to return. Defaults to 10.
+            Sorts tasks by their last update time. Defaults to
+            "Descending".
+        number (int): The maximum number of tasks to return. Defaults to
+                      10.
         ctx (Context): The MCP context for logging.
 
     Returns:
-        List[Dict[str, Any]]: A list of tasks, each represented as a dictionary.
+        List[Dict[str, Any]]: A list of tasks, each represented as a
+                              dictionary.
     """
     # (이 도구는 변경되지 않았습니다.)
     try:
         if ctx:
             await ctx.info(
-                f"Retrieving task list with status='{status}', sort='{sort}', number={number}"
+                f"Retrieving task list with status='{status}', "
+                f"sort='{sort}', number={number}"
             )
 
         tasks = task_manager.get_task_list(status=status, sort=sort, number=number)

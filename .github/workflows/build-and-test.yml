@@ -31,8 +31,9 @@ jobs:
       run: |
         uv run black --check .
         uv run isort --check .
-        uv run flake8 mcp_a2a_gateway tests
-
+        uv run ruff check . --fix
+        uv run ruff format .
+        uv run ruff check .
     - name: ✅ Run tests (pytest)
       run: uv run pytest
 

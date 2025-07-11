@@ -47,7 +47,8 @@ class StoredTask(BaseModel):
         description="The initial message that started the task."
     )
     status: str = Field(
-        description="The current status of the task (e.g., pending, running, completed, error)."
+        description="The current status of the task (e.g., pending, running, "
+        "completed, error)."
     )
     result: Optional[Dict[str, Any]] = Field(
         None, description="The final result of the task, if completed."
@@ -94,7 +95,8 @@ class TaskManager:
         agent_info: AgentInfo,
         message_text: str,
     ) -> StoredTask:
-        """에이전트 응답을 처리하고 항상 gateway_task_id를 기준으로 태스크를 업데이트합니다."""
+        """에이전트 응답을 처리하고 항상 gateway_task_id를 기준으로 태스크를
+        업데이트합니다."""
         stored_task = self.get_task(gateway_task_id)
         if not stored_task:
             # This can happen if the background task runs after a long delay
@@ -151,11 +153,13 @@ class TaskManager:
                 else:
                     return extract_text_content(obj.message)
 
-            # Case 5: Object is a Task - extract relevant info and check for artifacts
+            # Case 5: Object is a Task - extract relevant info and check for
+            # artifacts
             if isinstance(obj, Task):
                 task_info = []
 
-                # First, try to extract from artifacts (this is where the real content is)
+                # First, try to extract from artifacts (this is where the
+                # real content is)
                 if hasattr(obj, "artifacts") and obj.artifacts:
                     try:
                         artifact_content = []
@@ -186,7 +190,8 @@ class TaskManager:
                     except Exception as e:
                         logger.debug(f"Error extracting from task artifacts: {e}")
 
-                # If no artifacts or artifact extraction failed, get basic task info
+                # If no artifacts or artifact extraction failed, get basic
+                # task info
                 if hasattr(obj, "id") and obj.id:
                     task_info.append(f"Task ID: {obj.id}")
                 if hasattr(obj, "status") and obj.status:
@@ -194,7 +199,8 @@ class TaskManager:
                 if hasattr(obj, "description") and obj.description:
                     task_info.append(f"Description: {obj.description}")
 
-                # Also check for state or result fields that might contain content
+                # Also check for state or result fields that might contain
+                # content
                 if hasattr(obj, "state") and obj.state:
                     state_content = extract_text_content(obj.state)
                     if state_content and "no readable content" not in state_content:
@@ -282,17 +288,21 @@ class TaskManager:
                 # Agent returned a Task object directly
                 status = "running"
                 logger.info(
-                    f"Agent {agent_url} returned a task object. Now running in background."
+                    f"Agent {agent_url} returned a task object. "
+                    f"Now running in background."
                 )
 
                 # Log task object structure for debugging
                 task_obj = response.root
                 logger.debug(
-                    f"Task object attributes: {list(task_obj.__dict__.keys()) if hasattr(task_obj, '__dict__') else 'No __dict__'}"
+                    f"Task object attributes: "
+                    f"{list(task_obj.__dict__.keys()) if hasattr(task_obj, '__dict__') else 'No __dict__'}"
                 )
                 if hasattr(task_obj, "artifacts"):
                     logger.debug(
-                        f"Task has {len(task_obj.artifacts) if task_obj.artifacts else 0} artifacts"
+                        f"Task has "
+                        f"{len(task_obj.artifacts) if task_obj.artifacts else 0} "
+                        f"artifacts"
                     )
 
                 # Store the task ID if available
