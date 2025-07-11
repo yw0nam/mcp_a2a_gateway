@@ -107,7 +107,8 @@ Before you begin, ensure you have the following installed:
 
 ## Installation
 
-### Option 1: Direct Run with uvx (Recommended)
+<details>
+<summary><b>Option 1: Direct Run with uvx (Recommended)</b></summary>
 
 Run directly without installation using `uvx`:
 
@@ -115,9 +116,10 @@ Run directly without installation using `uvx`:
 uvx mcp-a2a-gateway
 ```
 
-This will automatically download and run the latest version from PyPI.
+</details>
 
-### Option 2: Local Development
+<details>
+<summary><b>Option 2: Local Development</b></summary>
 
 1. Clone the repository:
 
@@ -138,20 +140,29 @@ uv run mcp-a2a-gateway
 uvx --from . mcp-a2a-gateway
 ```
 
-### Option 3: HTTP (For Web Clients)
+</details>
+
+<details>
+<summary><b>Option 3: HTTP (For Web Clients)</b></summary>
 
 **Start the server with HTTP transport:**
 ```bash
 # Using uvx
 MCP_TRANSPORT=streamable-http MCP_HOST=0.0.0.0 MCP_PORT=10000 uvx mcp-a2a-gateway
 ```
-### Option 4:  (Server-Sent Events)
+
+</details>
+
+<details>
+<summary><b>Option 4: Server-Sent Events</b></summary>
 
 **Start the server with SSE transport:**
 ```bash
 # Using uvx
 MCP_TRANSPORT=sse MCP_HOST=0.0.0.0 MCP_PORT=10000 uvx mcp-a2a-gateway
 ```
+
+</details>
 
 ## Configuration
 
@@ -209,9 +220,11 @@ The A2A MCP Server supports multiple transport types:
 
 
 
-## TO connect github copilot
+## To connect github copilot
 
-### For HTTP/SSE Transport
+<details>
+<summary><b>For HTTP/SSE Transport</b></summary>
+
 Add below to VS Code settings.json for sse or http:
 ```json
 "mcpServers": {
@@ -221,9 +234,11 @@ Add below to VS Code settings.json for sse or http:
 }
 ```
 
-### For STDIO Transport
+</details>
 
-**Using uvx (Published Package):**
+<details>
+<summary><b>For STDIO Transport - Using uvx (Published Package)</b></summary>
+
 ```json
 "mcpServers": {
   "mcp_a2a_gateway": {
@@ -238,7 +253,11 @@ Add below to VS Code settings.json for sse or http:
 }
 ```
 
-**Using uvx (Local Development):**
+</details>
+
+<details>
+<summary><b>For STDIO Transport - Using uvx (Local Development)</b></summary>
+
 ```json
 "mcpServers": {
   "mcp_a2a_gateway": {
@@ -253,7 +272,11 @@ Add below to VS Code settings.json for sse or http:
 }
 ```
 
-**Using uv (Local Development):**
+</details>
+
+<details>
+<summary><b>For STDIO Transport - Using uv (Local Development)</b></summary>
+
 ```json
 "mcpServers": {
   "mcp_a2a_gateway": {
@@ -273,11 +296,13 @@ Add below to VS Code settings.json for sse or http:
 }
 ```
 
+</details>
+
 ## To Connect claude desktop
 
-### Transport: STDIO (Recommended)
+<details>
+<summary><b>Using uvx (Published Package)</b></summary>
 
-**Using uvx (Published Package):**
 Add this to claude_config.json
 
 ```json
@@ -293,7 +318,11 @@ Add this to claude_config.json
 }
 ```
 
-**Using uvx (Local Development):**
+</details>
+
+<details>
+<summary><b>Using uvx (Local Development)</b></summary>
+
 Add this to claude_config.json
 
 ```json
@@ -309,7 +338,11 @@ Add this to claude_config.json
 }
 ```
 
-**Using uv (Local Development):**
+</details>
+
+<details>
+<summary><b>Using uv (Local Development)</b></summary>
+
 Add this to claude_config.json
 
 ```json
@@ -324,6 +357,8 @@ Add this to claude_config.json
   }
 }
 ```
+
+</details>
 
 
 ## Available MCP Tools
