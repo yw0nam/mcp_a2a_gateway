@@ -1,7 +1,7 @@
 # tests/test_task_manager.py
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 from a2a.types import Task, TaskState
 from a2a.client import A2AClient, A2ACardResolver
 
@@ -21,7 +21,6 @@ async def test_send_message_async_success(
     from a2a.types import (
         TaskStatus,
         TaskState,
-        SendMessageResponse,
         SendMessageSuccessResponse,
     )
 
