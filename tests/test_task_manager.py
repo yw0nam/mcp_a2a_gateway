@@ -1,9 +1,10 @@
 # tests/test_task_manager.py
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import Task, TaskState
-from a2a.client import A2AClient, A2ACardResolver
 
 
 @pytest.mark.asyncio
@@ -18,11 +19,7 @@ async def test_send_message_async_success(
     await agent_manager.register_agent(agent_url)
 
     # A2AClient의 비동기 메서드를 AsyncMock으로 모킹합니다.
-    from a2a.types import (
-        TaskStatus,
-        TaskState,
-        SendMessageSuccessResponse,
-    )
+    from a2a.types import SendMessageSuccessResponse, TaskState, TaskStatus
 
     mock_task_status = TaskStatus(state=TaskState.working)
     mock_task = Task(

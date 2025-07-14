@@ -1,9 +1,11 @@
 # tests/conftest.py
 
+from unittest.mock import MagicMock
+
 import pytest
 import pytest_asyncio
-from unittest.mock import MagicMock
 from a2a.types import AgentCard
+
 from mcp_a2a_gateway.agent_manager import AgentManager
 from mcp_a2a_gateway.task_manager import TaskManager
 

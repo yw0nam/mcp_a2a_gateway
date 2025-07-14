@@ -1,6 +1,7 @@
 # tests/test_server_api.py
 
 import pytest
+
 from mcp_a2a_gateway.agent_manager import AgentInfo
 
 # server.py에서 사용하는 전역 manager 인스턴스를 모킹 대상으로 지정합니다.

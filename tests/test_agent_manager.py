@@ -1,8 +1,9 @@
 # tests/test_agent_manager.py
 
 import pytest
-from mcp_a2a_gateway.agent_manager import AgentInfo
 from a2a.client import A2ACardResolver
+
+from mcp_a2a_gateway.agent_manager import AgentInfo
 
 
 @pytest.mark.asyncio
