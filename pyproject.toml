@@ -28,12 +28,15 @@ dependencies = [
     "fastmcp>=2.8.1",
     "httpx>=0.28.1",
     "ruff>=0.12.2",
+    "pytest-asyncio>=1.0.0",
+    "pytest-mock>=3.14.1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.0.0",
     "black>=23.0.0",
     "isort>=5.12.0",
     "ruff",
@@ -41,6 +44,7 @@ dev = [
 test = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.0.0",
 ]
 
 [build-system]
