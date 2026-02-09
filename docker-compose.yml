@@ -1,0 +1,24 @@
+services:
+  mcp-a2a-gateway:
+    build: .
+    ports:
+      - "8888:8888"
+    environment:
+      - MCP_TRANSPORT=http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8888
+      - MCP_PATH=/mcp
+      - LOG_LEVEL=INFO
+      - MCP_DATA_DIR=/app/data
+    volumes:
+      - mcp_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/mcp"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  mcp_data:

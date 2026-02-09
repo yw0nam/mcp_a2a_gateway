@@ -19,7 +19,7 @@ from a2a.types import (
     TextPart,
 )
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_a2a_gateway.agent_manager import AgentInfo, AgentManager
 
@@ -35,6 +35,8 @@ MCP_REQUEST_IMMEDIATE_TIMEOUT = int(os.getenv("MCP_REQUEST_IMMEDIATE_TIMEOUT", "
 
 class StoredTask(BaseModel):
     """서버에 저장되는 작업의 상세 정보를 담는 모델"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # ⭐️ [변경] agent_task_id 필드 추가
     agent_task_id: Optional[str] = Field(
@@ -62,9 +64,6 @@ class StoredTask(BaseModel):
         if result:
             self.result = result
         self.updated_at = datetime.now(timezone.utc)
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class TaskManager:

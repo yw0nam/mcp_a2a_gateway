@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple
 import httpx
 from a2a.client import A2ACardResolver
 from a2a.types import AgentCard
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +16,9 @@ class AgentInfo(BaseModel):
     URL은 이 객체를 저장하는 딕셔너리의 키로 사용됩니다.
     """
 
-    card: AgentCard = Field(description="The full AgentCard of the agent")
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    class Config:
-        arbitrary_types_allowed = True
+    card: AgentCard = Field(description="The full AgentCard of the agent")
 
 
 class AgentManager:
